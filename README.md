@@ -1,4 +1,4 @@
-# IG — Project 2
+# Isaac Geng — Project 2
 
 One nginx image, built once, run three ways: as a single container, as five
 identical replicas, and as five unique services that differ only by the content

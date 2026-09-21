@@ -1,6 +1,6 @@
 FROM nginx:stable-alpine
 
-LABEL org.opencontainers.image.title="IG"
+LABEL org.opencontainers.image.title="Isaac Geng"
 LABEL org.opencontainers.image.description="One nginx image, run three ways: single, replicated, and as five content-only services."
 
 # Only the landing page is baked in. Copying site/ rather than . keeps the rest

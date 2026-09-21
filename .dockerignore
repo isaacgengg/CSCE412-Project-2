@@ -1,0 +1,24 @@
+# The build context only needs site/. Everything below is either irrelevant to
+# the image or actively must not reach it — the five services arrive at runtime
+# as read-only volume mounts, never as image layers.
+
+.git
+.gitignore
+.dockerignore
+
+# docs and orchestration
+README.md
+CLAUDE.md
+docker-compose.yml
+docker-compose.*.yml
+scripts/
+
+# mounted at runtime by docker-compose.unique.yml, never copied in
+services/
+
+# local noise
+**/.DS_Store
+.vscode-server/
+node_modules/
+*.pem
+*.zip

@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IG — Typing Test</title>
+<style>
+:root{
+  --ink:#16181d; --ink-2:#3b4150; --muted:#8b91a0;
+  --line:#dde0e7; --paper:#f3f4f7; --card:#fff;
+  --accent:#7042d6; --accent-soft:#f1ecfd;
+  --good:#1a7f5a; --bad:#c9342b;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+
+/* --- shared IG chrome --- */
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;height:56px;padding:0 20px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:680;letter-spacing:.01em}
+.brand svg{display:block;fill:var(--accent)}
+.pg{font-size:13px;color:var(--muted)}
+.wrap{max-width:860px;margin:0 auto;padding:26px 20px 56px}
+footer{border-top:1px solid var(--line);background:var(--card);padding:18px 20px;
+  display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+footer b{color:var(--ink-2);font-weight:600}
+
+h1{margin:0 0 6px;font-size:27px;line-height:1.1;letter-spacing:-.025em;font-weight:660}
+.lede{margin:0 0 24px;max-width:56ch;font-size:14.5px;color:var(--ink-2)}
+
+/* --- live readout --- */
+.hud{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);
+  background:var(--card);border-top:3px solid var(--accent)}
+.hud div{padding:13px 16px;border-left:1px solid var(--line);min-width:0}
+.hud div:first-child{border-left:0}
+.hud .k{font-size:11.5px;color:var(--muted);margin-bottom:3px}
+.hud .v{font-size:25px;line-height:1.05;font-weight:660;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums}
+.hud .v small{font-size:12px;font-weight:450;color:var(--muted);letter-spacing:0;margin-left:3px}
+.hud .clock .v{color:var(--accent)}
+.track{height:3px;background:var(--line)}
+.track i{display:block;height:3px;background:var(--accent);width:0;transition:width .12s linear}
+
+/* --- the passage --- */
+.stage{position:relative;margin-top:22px;border:1px solid var(--line);background:var(--card)}
+.passage{padding:24px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  font-size:18px;line-height:1.85;letter-spacing:.005em;color:var(--muted);
+  max-height:290px;overflow:hidden;white-space:pre-wrap;word-break:break-word}
+/* one <i> per character; the class says how it was typed */
+.passage i{font-style:normal}
+.passage i.b{color:var(--good)}
+.passage i.u{color:var(--bad);background:#fdecea;border-radius:2px;
+  box-shadow:inset 0 -2px 0 var(--bad)}
+.passage i.s{color:var(--ink);background:var(--accent-soft);border-radius:2px;
+  box-shadow:inset 0 -2px 0 var(--accent)}
+/* the invisible field that actually receives the keystrokes */
+#feed{position:absolute;inset:0;width:100%;height:100%;padding:24px;border:0;resize:none;
+  background:transparent;color:transparent;caret-color:transparent;font:inherit;
+  opacity:.001;cursor:text}
+#feed:focus{outline:0}
+.stage.focused{border-color:#b9bfcb}
+.veil{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.88);font-size:14.5px;color:var(--ink-2);text-align:center;padding:20px}
+.veil b{color:var(--accent)}
+
+.tools{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:16px;
+  font-size:12.5px;color:var(--muted)}
+.btn{appearance:none;font:inherit;font-size:13.5px;padding:8px 14px;border-radius:4px;cursor:pointer;
+  background:var(--card);color:var(--ink-2);border:1px solid var(--line)}
+.btn:hover{border-color:#b9bfcb;color:var(--ink)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.pri:hover{background:#5e34bb;border-color:#5e34bb}
+
+/* --- results --- */
+.results{margin-top:22px;border:1px solid var(--line);background:var(--card);
+  border-top:3px solid var(--accent);padding:26px}
+.results h2{margin:0 0 2px;font-size:19px;letter-spacing:-.015em;font-weight:650}
+.results .when{font-size:12.5px;color:var(--muted);margin-bottom:22px}
+.score{display:grid;grid-template-columns:auto minmax(0,1fr);gap:28px;align-items:end;
+  padding-bottom:22px;border-bottom:1px solid var(--line)}
+.score .wpm{font-size:74px;line-height:.9;font-weight:680;letter-spacing:-.045em;
+  font-variant-numeric:tabular-nums;color:var(--accent)}
+.score .wpm span{font-size:17px;font-weight:550;color:var(--muted);letter-spacing:0;margin-left:7px}
+.score dl{margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.score>*,.score dl>div{min-width:0}
+.score dt{font-size:11.5px;color:var(--muted)}
+.score dd{margin:2px 0 0;font-size:19px;font-weight:620;font-variant-numeric:tabular-nums}
+.pb{margin:18px 0 0;font-size:13.5px;color:var(--ink-2)}
+.pb b{color:var(--accent)}
+.misses{margin-top:22px}
+.misses .k{font-size:11.5px;color:var(--muted);margin-bottom:9px}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{display:flex;align-items:baseline;gap:6px;border:1px solid var(--line);border-radius:4px;
+  padding:5px 9px;background:var(--paper)}
+.chip code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;
+  font-weight:600;color:var(--bad)}
+.chip em{font-style:normal;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+@media(max-width:700px){
+  .hud{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hud div:nth-child(3){border-left:0}
+  .hud div:nth-child(n+3){border-top:1px solid var(--line)}
+  .score{grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+  .score .wpm{font-size:60px}
+}
+@media(max-width:480px){
+  .bar{padding:0 14px}.wrap{padding:18px 14px 44px}
+  h1{font-size:22px}
+  .passage,#feed{padding:16px}
+  .passage{font-size:16px;line-height:1.8;max-height:340px}
+  .results{padding:18px}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="brand">
+    <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
+      <rect x="2" y="2" width="7" height="7" rx="1.2"/><rect x="15" y="2" width="7" height="7" rx="1.2"/>
+      <rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/>
+      <rect x="2" y="15" width="7" height="7" rx="1.2"/><rect x="15" y="15" width="7" height="7" rx="1.2"/>
+    </svg>
+    IG
+  </span>
+  <span class="pg">Typing Test</span>
+</header>
+
+<main class="wrap">
+  <h1>Sixty seconds</h1>
+  <p class="lede">The clock starts on your first keystroke. Correct characters turn green, wrong ones
+    red. Accuracy is measured on first attempt, so fixing a typo does not erase it.</p>
+
+  <div class="hud">
+    <div class="clock"><div class="k">Time left</div><div class="v" id="h-time">60<small>s</small></div></div>
+    <div><div class="k">Words a minute</div><div class="v" id="h-wpm">0</div></div>
+    <div><div class="k">First-try accuracy</div><div class="v" id="h-acc">100<small>%</small></div></div>
+    <div><div class="k">Characters</div><div class="v" id="h-chars">0</div></div>
+  </div>
+  <div class="track"><i id="h-bar"></i></div>
+
+  <div class="stage" id="stage">
+    <div class="passage" id="passage"></div>
+    <textarea id="feed" autocomplete="off" autocorrect="off" autocapitalize="off"
+      spellcheck="false" aria-label="Type the passage here"></textarea>
+    <!-- one element inside the flex container: separate text nodes would each
+         become a flex item and lose the spaces between them -->
+    <div class="veil" id="veil"><span>Click here and start typing &mdash; the
+      <b>60 second</b> clock starts with your first keystroke.</span></div>
+  </div>
+
+  <div class="tools">
+    <button type="button" class="btn" id="restart">Restart</button>
+    <button type="button" class="btn" id="next">Different passage</button>
+    <span id="src"></span>
+  </div>
+
+  <div id="out"></div>
+</main>
+
+<footer>
+  <span><b>IG Typing Test</b> &mdash; service 5 of 5</span>
+  <span>port 8095</span>
+</footer>
+
+<script>
+/* ==================================================================== data */
+var DATA = {
+  seconds: 60,
+  store: 'ig.typing.best',
+  passages: [
+  { title: 'The Shipping Forecast',
+    text: "Four times a day the BBC reads out the weather for thirty one sea areas around the British Isles, in a fixed order, in under three hundred and fifty words. The order never changes: it runs clockwise from Viking in the north, down past Dogger and Thames, around Fastnet and up to South East Iceland. Listeners who have never owned a boat know the litany by heart, and the late edition has become a lullaby for a large part of the country. The brevity is not a style choice. Every word costs airtime, so the forecast uses a compressed grammar in which falling slowly is a precise term and not a mood." },
+  { title: 'The Antikythera Mechanism',
+    text: "In 1901 sponge divers pulled a lump of corroded bronze out of a wreck near the Greek island of Antikythera. It sat in a museum for decades before anyone understood that the green mass held at least thirty interlocking gears, cut by hand, some with teeth barely a millimetre across. The device modelled the motion of the sun and moon, predicted eclipses, and tracked the four year cycle of the games. Nothing of comparable complexity survives from the next fourteen centuries. Whoever built it was working from a tradition of precision engineering that we otherwise know almost nothing about, because bronze gets melted down and wood rots." },
+  { title: 'How Bees Argue',
+    text: "A honeybee that has found a good patch of flowers returns to the hive and dances. The angle of the dance relative to vertical encodes the direction of the food against the sun, and the duration of the waggle encodes the distance. Other bees follow, copy, and dance in turn if they agree. When a swarm needs a new home the same mechanism becomes a debate: scouts advertise competing sites, support builds behind the better ones, and the swarm leaves only once a quorum forms around a single choice. No bee compares the options. The colony does the comparing, and no individual holds the answer." },
+  { title: 'The Voyager Record',
+    text: "Bolted to the side of each Voyager probe is a gold plated copper disc with instructions for playing it etched into the cover. On it are greetings in fifty five languages, the sound of a kiss, a mother speaking to her child, thunder, a train, whale song, and ninety minutes of music from Bach to Blind Willie Johnson. The discs were finished in six weeks. Nobody expects them to be found. They were made for us, as a statement about what we would want said on our behalf, at a moment when it was still possible to believe a committee could summarise a planet in ninety minutes." },
+  { title: 'Keeping the Light',
+    text: "Before automation a lighthouse keeper lived by the lamp, winding the clockwork that turned the lens, trimming the wick, and writing the weather in a log every hour of every night. The lens itself was the clever part: a Fresnel array of concentric prisms that bends scattered light into a single flat beam, throwing a first order light more than twenty miles out to sea. The keeper's job was mostly not heroism but repetition. The log books that survive are long runs of identical entries, wind moderate, sea slight, light burning well, broken now and then by a single sentence about a ship that did not make it." }
+  ]
+};
+
+var $ = function (id) { return document.getElementById(id); };
+
+/* ------------------------------------------------------------- per-run state */
+var order = 0,          /* which passage we are on */
+    target = '',        /* the text to be typed, grown as needed */
+    spans = [],         /* one element per character of target */
+    firstTry = [],      /* firstTry[i] = was position i right the first time it was typed */
+    attempted = 0, misses = 0, missed = {},
+    started = 0, timer = null, ticker = null, finished = false;
+
+/* ------------------------------------------------------------------ scoring
+   Pure: given what was expected and what was typed, say how each character
+   should be drawn and how many landed. Kept separate so it is testable. */
+function score(expected, typed) {
+  var marks = [], correct = 0, i, e, t;
+  for (i = 0; i < typed.length; i++) {
+    e = expected.charAt(i);
+    t = typed.charAt(i);
+    if (t === e) { marks.push('b'); correct++; }
+    else { marks.push('u'); }
+  }
+  return { marks: marks, correct: correct, typed: typed.length };
+}
+
+/* -------------------------------------------------------------- the passage */
+function appendPassage() {
+  var p = DATA.passages[order % DATA.passages.length];
+  order++;
+  target += (target ? ' ' : '') + p.text;
+  paintFrom(spans.length);
+  $('src').textContent = 'Passage: ' + p.title;
+}
+
+/* Build the character spans from index `from` onward. */
+function paintFrom(from) {
+  var html = '', i, ch;
+  for (i = from; i < target.length; i++) {
+    ch = target.charAt(i);
+    if (ch === '&') ch = '&amp;';
+    else if (ch === '<') ch = '&lt;';
+    else if (ch === '>') ch = '&gt;';
+    html += '<i data-c="' + i + '">' + ch + '</i>';
+  }
+  if (from === 0) $('passage').innerHTML = html;
+  else $('passage').insertAdjacentHTML('beforeend', html);
+  spans = $('passage').getElementsByTagName('i');
+}
+
+/* Redraw only the characters whose state can have changed. */
+var drawnTo = 0;
+function draw(typed) {
+  var s = score(target, typed), i, n = Math.max(drawnTo, typed.length) + 1;
+  for (i = 0; i < n && i < spans.length; i++) {
+    var want = i < typed.length ? s.marks[i] : (i === typed.length ? 's' : '');
+    if (spans[i].className !== want) spans[i].className = want;
+  }
+  drawnTo = typed.length;
+  /* keep the caret line in view without scrolling the page */
+  if (spans[typed.length]) {
+    var box = $('passage'), el = spans[typed.length],
+        y = el.offsetTop - box.offsetTop;
+    if (y - box.scrollTop > box.clientHeight - 90) box.scrollTop = y - 60;
+    if (y < box.scrollTop) box.scrollTop = Math.max(0, y - 60);
+  }
+  return s;
+}
+
+/* ------------------------------------------------------------------- the run */
+function reset(newPassage) {
+  clearInterval(ticker);
+  clearTimeout(timer);
+  started = 0; finished = false;
+  attempted = 0; misses = 0; missed = {}; firstTry = [];
+  drawnTo = 0;
+  target = ''; spans = [];
+  $('passage').innerHTML = '';
+  if (newPassage !== true) order = order === 0 ? 0 : order - 1;   /* same passage again */
+  appendPassage();
+  $('feed').value = '';
+  $('feed').disabled = false;
+  $('out').innerHTML = '';
+  $('veil').style.display = '';
+  $('passage').scrollTop = 0;
+  hud(DATA.seconds, 0, 100, 0);
+  $('h-bar').style.width = '0';
+  draw('');
+}
+
+function hud(left, wpm, acc, chars) {
+  $('h-time').innerHTML = Math.max(0, Math.ceil(left)) + '<small>s</small>';
+  $('h-wpm').textContent = wpm;
+  $('h-acc').innerHTML = acc + '<small>%</small>';
+  $('h-chars').textContent = chars;
+}
+
+function elapsed() { return started ? (Date.now() - started) / 1000 : 0; }
+
+function stats() {
+  var s = score(target, $('feed').value),
+      mins = Math.max(elapsed(), 0.5) / 60,
+      wpm = Math.round((s.correct / 5) / mins),
+      acc = attempted ? Math.round(((attempted - misses) / attempted) * 100) : 100;
+  return { wpm: wpm, acc: acc, correct: s.correct, typed: s.typed };
+}
+
+function begin() {
+  started = Date.now();
+  $('veil').style.display = 'none';
+  timer = setTimeout(finish, DATA.seconds * 1000);
+  ticker = setInterval(function () {
+    var e = elapsed(), st = stats();
+    hud(DATA.seconds - e, st.wpm, st.acc, st.typed);
+    $('h-bar').style.width = Math.min(100, (e / DATA.seconds) * 100) + '%';
+  }, 100);
+}
+
+$('feed').addEventListener('input', function () {
+  if (finished) return;
+  if (!started) begin();
+
+  var v = this.value, i;
+  if (v.length > target.length) v = v.slice(0, target.length);
+
+  /* Score each position the first time it is reached; later fixes do not undo it. */
+  for (i = 0; i < v.length; i++) {
+    if (firstTry[i] === undefined) {
+      firstTry[i] = v.charAt(i) === target.charAt(i);
+      attempted++;
+      if (!firstTry[i]) {
+        misses++;
+        var c = target.charAt(i);
+        missed[c] = (missed[c] || 0) + 1;
+      }
+    }
+  }
+
+  draw(v);
+  if (v.length > target.length - 220) appendPassage();   /* never run out of words */
+  var st = stats();
+  hud(DATA.seconds - elapsed(), st.wpm, st.acc, st.typed);
+});
+
+/* --------------------------------------------------------- personal best */
+function readBest() {
+  try { return JSON.parse(localStorage.getItem(DATA.store)) || null; }
+  catch (e) { return null; }          /* private mode, blocked storage, bad JSON */
+}
+function writeBest(rec) {
+  try { localStorage.setItem(DATA.store, JSON.stringify(rec)); return true; }
+  catch (e) { return false; }
+}
+
+/* ---------------------------------------------------------------- results */
+function finish() {
+  finished = true;
+  clearInterval(ticker);
+  clearTimeout(timer);
+  $('feed').disabled = true;
+
+  var st = stats(), i,
+      best = readBest(), isBest = !best || st.wpm > best.wpm,
+      pairs = [], html;
+
+  for (i in missed) if (missed.hasOwnProperty(i)) pairs.push([i, missed[i]]);
+  pairs.sort(function (a, b) { return b[1] - a[1]; });
+  pairs = pairs.slice(0, 7);
+
+  if (isBest && st.typed > 0) {
+    writeBest({ wpm: st.wpm, acc: st.acc, at: new Date().toISOString().slice(0, 10) });
+  }
+
+  html = '<section class="results"><h2>Sixty seconds, done</h2>' +
+    '<div class="when">' + st.typed + ' characters typed, ' + st.correct + ' of them correct</div>' +
+    '<div class="score"><div class="wpm">' + st.wpm + '<span>wpm</span></div>' +
+    '<dl><div><dt>First-try accuracy</dt><dd>' + st.acc + '%</dd></div>' +
+    '<div><dt>Mistyped</dt><dd>' + misses + '</dd></div>' +
+    '<div><dt>Keys attempted</dt><dd>' + attempted + '</dd></div></dl></div>';
+
+  if (best && !isBest) {
+    html += '<p class="pb">Your best is <b>' + best.wpm + ' wpm</b> at ' + best.acc +
+            '% accuracy, set ' + best.at + '.</p>';
+  } else if (st.typed > 0) {
+    html += '<p class="pb"><b>New personal best.</b>' +
+            (best ? ' Previous: ' + best.wpm + ' wpm.' : ' Nothing to beat, so this is the mark.') +
+            '</p>';
+  }
+
+  if (pairs.length) {
+    html += '<div class="misses"><div class="k">Characters you missed most</div><div class="chips">';
+    for (i = 0; i < pairs.length; i++) {
+      html += '<span class="chip"><code>' +
+              (pairs[i][0] === ' ' ? 'space' : pairs[i][0].replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;').replace(/>/g, '&gt;')) +
+              '</code><em>&times;' + pairs[i][1] + '</em></span>';
+    }
+    html += '</div></div>';
+  }
+
+  html += '<div class="tools" style="margin-top:24px">' +
+          '<button type="button" class="btn pri" id="again">Go again</button>' +
+          '<button type="button" class="btn" id="fresh">New passage</button></div></section>';
+
+  $('out').innerHTML = html;
+  $('again').addEventListener('click', function () { reset(false); $('feed').focus(); });
+  $('fresh').addEventListener('click', function () { reset(true); $('feed').focus(); });
+  hud(0, st.wpm, st.acc, st.typed);
+  $('h-bar').style.width = '100%';
+}
+
+/* ------------------------------------------------------------------- wiring */
+$('restart').addEventListener('click', function () { reset(false); $('feed').focus(); });
+$('next').addEventListener('click', function () { reset(true); $('feed').focus(); });
+$('veil').addEventListener('click', function () { $('feed').focus(); });
+$('feed').addEventListener('focus', function () { $('stage').className = 'stage focused'; });
+$('feed').addEventListener('blur', function () { $('stage').className = 'stage'; });
+
+reset(true);
+
+/* Self-check for the character scorer: open with ?selftest and read the console. */
+if (location.search.indexOf('selftest') > -1) {
+  var t = [
+    ['all right',  score('hello', 'hello'),  { correct: 5, typed: 5, marks: 'bbbbb' }],
+    ['one wrong',  score('hello', 'hallo'),  { correct: 4, typed: 5, marks: 'bubbb' }],
+    ['part typed', score('hello', 'he'),     { correct: 2, typed: 2, marks: 'bb' }],
+    ['nothing',    score('hello', ''),       { correct: 0, typed: 0, marks: '' }]
+  ];
+  for (var z = 0; z < t.length; z++) {
+    var got = t[z][1], want = t[z][2],
+        ok = got.correct === want.correct && got.typed === want.typed &&
+             got.marks.join('') === want.marks;
+    console.log((ok ? 'ok   ' : 'FAIL ') + t[z][0] + ' -> correct ' + got.correct +
+                ', marks ' + got.marks.join(''));
+  }
+}
+</script>
+</body>
+</html>

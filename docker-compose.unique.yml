@@ -1,0 +1,91 @@
+# ============================================================================
+# Mode 03 of 3 — five UNIQUE services from the one identical image.
+#
+#   docker compose -f docker-compose.unique.yml up -d
+#   docker compose -f docker-compose.unique.yml ps
+#   docker compose -f docker-compose.unique.yml down
+#
+#   8091 recipe   8092 board   8093 sky   8094 split   8095 typing
+#
+# The whole idea of this file: five containers differ ONLY by what is mounted
+# over their web root. There is one Dockerfile and one image. Each service
+# bind-mounts its own ./services/<name> directory on top of
+# /usr/share/nginx/html, read-only, which shadows the landing page baked into
+# the image and leaves that service serving its own single page.
+#
+# Building five images would have produced the same five web pages and taught
+# nothing — the exercise is runtime configuration, not build-time duplication.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# A YAML anchor holding everything the five services have in common. `x-`
+# top-level keys are ignored by Compose, so this block is a definition only;
+# each service below pulls it in with `<<: *ig` and then adds the three
+# things that actually differ: its name, its port, and its content directory.
+# ---------------------------------------------------------------------------
+x-ig-service: &ig
+  image: my-nginx-container:1.0
+  restart: unless-stopped
+  networks:
+    - p2net
+  healthcheck:
+    test: ["CMD", "wget", "-qO-", "http://localhost/"]
+    interval: 15s
+    timeout: 3s
+    retries: 3
+    start_period: 5s
+
+services:
+  # --- 8091 -----------------------------------------------------------------
+  recipe:
+    <<: *ig                 # merge in the shared block above
+    container_name: p2-recipe
+    ports:
+      - "8091:80"
+    volumes:
+      # ro = read-only. The container has no business writing to its own
+      # content, and mounting it read-only makes that structural rather than
+      # a matter of trust.
+      - ./services/recipe:/usr/share/nginx/html:ro
+
+  # --- 8092 -----------------------------------------------------------------
+  board:
+    <<: *ig
+    container_name: p2-board
+    ports:
+      - "8092:80"
+    volumes:
+      - ./services/board:/usr/share/nginx/html:ro
+
+  # --- 8093 -----------------------------------------------------------------
+  sky:
+    <<: *ig
+    container_name: p2-sky
+    ports:
+      - "8093:80"
+    volumes:
+      - ./services/sky:/usr/share/nginx/html:ro
+
+  # --- 8094 -----------------------------------------------------------------
+  split:
+    <<: *ig
+    container_name: p2-split
+    ports:
+      - "8094:80"
+    volumes:
+      - ./services/split:/usr/share/nginx/html:ro
+
+  # --- 8095 -----------------------------------------------------------------
+  typing:
+    <<: *ig
+    container_name: p2-typing
+    ports:
+      - "8095:80"
+    volumes:
+      - ./services/typing:/usr/share/nginx/html:ro
+
+networks:
+  p2net:
+    # One bridge for all five. They do not talk to each other, but sharing a
+    # network keeps them in a single logical group and out of the default one.
+    driver: bridge

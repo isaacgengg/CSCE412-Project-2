@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IG — Constellations</title>
+<style>
+:root{
+  --ink:#e9ecf4; --ink-2:#aeb5c6; --muted:#767e92;
+  --line:#242a38; --paper:#080a0f; --card:#101420;
+  --accent:#7fb0ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+
+/* --- shared IG chrome, dark variant --- */
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;height:56px;padding:0 20px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:680;letter-spacing:.01em}
+.brand svg{display:block;fill:var(--accent)}
+.pg{font-size:13px;color:var(--muted)}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 20px 48px}
+footer{border-top:1px solid var(--line);background:var(--card);padding:18px 20px;
+  display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+footer b{color:var(--ink-2);font-weight:600}
+
+h1{margin:0 0 7px;font-size:27px;line-height:1.1;letter-spacing:-.025em;font-weight:660}
+.lede{margin:0 0 22px;max-width:60ch;font-size:14.5px;color:var(--ink-2)}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:28px;align-items:start}
+.layout>*{min-width:0}
+
+/* --- sky --- */
+.skybox{position:relative}
+canvas{display:block;width:100%;height:auto;border:1px solid var(--line);
+  background:#05060a;touch-action:manipulation;cursor:crosshair}
+.hint{margin-top:9px;font-size:12px;color:var(--muted)}
+
+.timeline{margin-top:16px;padding:14px 16px;border:1px solid var(--line);background:var(--card)}
+.timeline .lab{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.timeline .lab span:first-child{font-size:12.5px;color:var(--muted)}
+.timeline .now{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:21px;
+  color:var(--accent);font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:none;
+  margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--line)}
+input[type=range]::-moz-range-track{height:3px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7.5px;
+  border-radius:50%;background:var(--accent);border:3px solid var(--card);box-shadow:0 0 0 1px var(--accent)}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--accent);
+  border:3px solid var(--card);box-shadow:0 0 0 1px var(--accent)}
+input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+
+/* --- side panel --- */
+.panel{border:1px solid var(--line);background:var(--card)}
+.panel .pad{padding:16px}
+.panel h2{margin:0 0 2px;font-size:19px;letter-spacing:-.015em;font-weight:640}
+.panel .lat{font-size:12px;color:var(--muted);margin-bottom:12px}
+.panel .myth{font-size:13.5px;color:var(--ink-2);margin:0 0 14px}
+.star{border-top:1px solid var(--line);padding-top:12px;font-size:13px}
+.star .k{font-size:11px;color:var(--muted);margin-bottom:3px}
+.star .v{font-weight:600}
+.star .v em{font-style:normal;font-weight:450;color:var(--muted);
+  font-variant-numeric:tabular-nums;margin-left:6px}
+.empty{font-size:13.5px;color:var(--muted);padding:16px}
+
+.list{border-top:1px solid var(--line);max-height:330px;overflow-y:auto}
+.list button{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;
+  appearance:none;background:none;border:0;border-bottom:1px solid var(--line);
+  padding:9px 16px;font:inherit;font-size:13px;color:var(--ink-2);text-align:left;cursor:pointer}
+.list button:last-child{border-bottom:0}
+.list button:hover{background:#171d2c;color:var(--ink)}
+.list button[aria-pressed="true"]{color:var(--accent);font-weight:600}
+.list .down{color:var(--muted)}
+.list .up{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.list .up b{color:var(--accent);font-weight:600}
+
+@media(max-width:860px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:20px}
+  .list{max-height:none}
+}
+@media(max-width:480px){
+  .bar{padding:0 14px}.wrap{padding:18px 14px 40px}
+  h1{font-size:22px}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="brand">
+    <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
+      <rect x="2" y="2" width="7" height="7" rx="1.2"/><rect x="15" y="2" width="7" height="7" rx="1.2"/>
+      <rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/>
+      <rect x="2" y="15" width="7" height="7" rx="1.2"/><rect x="15" y="15" width="7" height="7" rx="1.2"/>
+    </svg>
+    IG
+  </span>
+  <span class="pg">Constellations</span>
+</header>
+
+<main class="wrap">
+  <h1>The whole sky, looking up</h1>
+  <p class="lede">Twelve constellations at their real coordinates, projected as they would appear from
+    40&deg;N on a late-September night. The rim is the horizon, the centre is straight overhead. Move the
+    time slider and the sky turns about the pole; things rise in the east and set in the west, as they do.</p>
+
+  <div class="layout">
+    <div>
+      <div class="skybox">
+        <canvas id="sky" width="620" height="620" aria-label="Star chart"></canvas>
+        <p class="hint" id="hint">Hover a constellation to trace it, click to read about it.</p>
+      </div>
+
+      <div class="timeline">
+        <div class="lab"><span>Time of night</span><span class="now" id="tlabel">22:00</span></div>
+        <input type="range" id="time" min="1080" max="1800" step="10" value="1320"
+               aria-label="Time of night">
+        <div class="ticks"><span>18:00</span><span>00:00</span><span>06:00</span></div>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div id="detail"><p class="empty">Nothing selected yet. Pick a constellation from the sky or the
+        list below &mdash; the ones below the horizon are greyed out at this hour.</p></div>
+      <div class="list" id="list"></div>
+    </aside>
+  </div>
+</main>
+
+<footer>
+  <span><b>IG Constellations</b> &mdash; service 3 of 5</span>
+  <span>port 8093</span>
+</footer>
+
+<script>
+/* ==================================================================== data
+   Stars are [right ascension in hours, declination in degrees, magnitude,
+   name or ''] — real catalogue positions, rounded. lines index into stars. */
+var SKY = {
+  latitude: 40,
+  constellations: [
+  {
+    name: 'Ursa Major', abbr: 'UMa',
+    brightest: { name: 'Alioth', mag: 1.77, note: 'a white A-type star, 82 light years out' },
+    myth: 'Callisto, a companion of Artemis, was turned into a bear by a jealous Hera and slung into the sky by Zeus. The seven bright stars are the Plough or the Big Dipper; the two at the end of the bowl point at Polaris, which is why this is the first pattern most people learn.',
+    stars: [[11.062,61.75,1.79,'Dubhe'],[11.031,56.38,2.37,'Merak'],[11.897,53.69,2.44,'Phecda'],
+            [12.257,57.03,3.31,'Megrez'],[12.900,55.96,1.77,'Alioth'],[13.399,54.93,2.23,'Mizar'],
+            [13.792,49.31,1.86,'Alkaid']],
+    lines: [[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]]
+  },
+  {
+    name: 'Orion', abbr: 'Ori',
+    brightest: { name: 'Rigel', mag: 0.18, note: 'a blue supergiant, 40,000 times our Sun' },
+    myth: 'A boastful giant hunter who claimed he could kill every animal on earth, and was stung to death by a scorpion for saying so. He and Scorpius are kept on opposite sides of the sky: one sets as the other rises, so they never meet again.',
+    stars: [[5.919,7.41,0.45,'Betelgeuse'],[5.418,6.35,1.64,'Bellatrix'],[5.679,-1.94,1.74,'Alnitak'],
+            [5.604,-1.20,1.69,'Alnilam'],[5.533,-0.30,2.25,'Mintaka'],[5.796,-9.67,2.07,'Saiph'],
+            [5.242,-8.20,0.18,'Rigel'],[5.585,9.93,3.39,'Meissa']],
+    lines: [[0,1],[1,4],[0,2],[4,3],[3,2],[2,5],[4,6],[5,6],[7,0],[7,1]]
+  },
+  {
+    name: 'Cassiopeia', abbr: 'Cas',
+    brightest: { name: 'Schedar', mag: 2.24, note: 'an orange giant, 228 light years out' },
+    myth: 'A queen vain enough to claim she outshone the sea nymphs, which cost her daughter Andromeda a chaining to a rock. Poseidon fixed her to the pole, circling it upside down for half of every night as a lesson about boasting.',
+    stars: [[0.153,59.15,2.28,'Caph'],[0.675,56.54,2.24,'Schedar'],[0.945,60.72,2.15,'Gamma Cas'],
+            [1.430,60.24,2.68,'Ruchbah'],[1.907,63.67,3.35,'Segin']],
+    lines: [[0,1],[1,2],[2,3],[3,4]]
+  },
+  {
+    name: 'Cygnus', abbr: 'Cyg',
+    brightest: { name: 'Deneb', mag: 1.25, note: 'one of the most luminous stars we can see' },
+    myth: 'Zeus in swan form, mid-seduction, flying down the length of the Milky Way. Also read as the Northern Cross; Deneb marks the tail and Albireo, a lovely gold-and-blue double in binoculars, the beak.',
+    stars: [[20.690,45.28,1.25,'Deneb'],[20.370,40.26,2.23,'Sadr'],[20.770,33.97,2.48,'Gienah'],
+            [19.749,45.13,2.87,'Delta Cygni'],[19.512,27.96,3.05,'Albireo']],
+    lines: [[0,1],[1,4],[2,1],[1,3]]
+  },
+  {
+    name: 'Lyra', abbr: 'Lyr',
+    brightest: { name: 'Vega', mag: 0.03, note: 'the zero point of the old magnitude scale' },
+    myth: "Orpheus's lyre, which played well enough to talk the underworld into giving his wife back, on a condition he then failed. After he died the Muses put the instrument in the sky. Vega was the pole star around 12,000 BC and will be again.",
+    stars: [[18.615,38.78,0.03,'Vega'],[18.834,33.36,3.52,'Sheliak'],[18.982,32.69,3.25,'Sulafat'],
+            [18.908,36.90,4.22,'Delta Lyrae'],[18.746,37.60,4.34,'Zeta Lyrae']],
+    lines: [[0,4],[4,3],[3,2],[2,1],[1,4]]
+  },
+  {
+    name: 'Scorpius', abbr: 'Sco',
+    brightest: { name: 'Antares', mag: 1.06, note: 'a red supergiant, 700 times the Sun across' },
+    myth: 'The scorpion sent to kill Orion, and the reason the two are never up together. Its name means "rival of Mars" — Antares is the same sullen red as the planet, and the pair are easy to confuse near the horizon.',
+    stars: [[16.490,-26.43,1.06,'Antares'],[16.091,-19.81,2.62,'Graffias'],[16.005,-22.62,2.29,'Dschubba'],
+            [15.981,-26.11,2.89,'Pi Scorpii'],[16.353,-25.59,2.90,'Sigma Scorpii'],
+            [16.598,-28.22,2.82,'Tau Scorpii'],[16.836,-34.29,2.29,'Epsilon Scorpii'],
+            [17.560,-37.10,1.62,'Shaula'],[17.622,-42.99,1.86,'Sargas']],
+    lines: [[1,2],[2,3],[2,4],[4,0],[0,5],[5,6],[6,8],[8,7]]
+  },
+  {
+    name: 'Leo', abbr: 'Leo',
+    brightest: { name: 'Regulus', mag: 1.36, note: 'spinning so fast it is visibly egg-shaped' },
+    myth: 'The Nemean lion, whose hide no weapon could cut, strangled by Heracles as the first of his labours. The curve of stars from Regulus upward is the Sickle; the November meteor shower that appears to come from here is named after it.',
+    stars: [[10.140,11.97,1.36,'Regulus'],[10.278,16.76,3.48,'Eta Leonis'],[10.333,19.84,2.08,'Algieba'],
+            [11.235,20.52,2.56,'Zosma'],[11.237,15.43,3.33,'Chort'],[11.818,14.57,2.14,'Denebola'],
+            [10.278,23.42,3.43,'Adhafera'],[9.879,26.01,3.85,'Rasalas']],
+    lines: [[0,1],[1,2],[2,6],[6,7],[2,3],[3,5],[5,4],[4,0],[3,4]]
+  },
+  {
+    name: 'Taurus', abbr: 'Tau',
+    brightest: { name: 'Aldebaran', mag: 0.85, note: 'an orange giant the Voyagers are drifting toward' },
+    myth: 'Zeus again, this time as a white bull carrying Europa off across the sea. Only the front half is drawn, which is why the figure ends abruptly. The V of the face is the Hyades cluster; the smudge on its shoulder is the Pleiades.',
+    stars: [[4.599,16.51,0.85,'Aldebaran'],[5.438,28.61,1.65,'Elnath'],[3.791,24.11,2.85,'Alcyone'],
+            [4.477,15.87,3.40,'Theta Tauri'],[4.330,15.63,3.65,'Gamma Tauri'],
+            [4.478,19.18,3.53,'Epsilon Tauri'],[5.627,21.14,3.00,'Zeta Tauri']],
+    lines: [[0,3],[3,4],[4,5],[5,1],[0,6],[4,2]]
+  },
+  {
+    name: 'Gemini', abbr: 'Gem',
+    brightest: { name: 'Pollux', mag: 1.14, note: 'the nearest giant star to us, with a known planet' },
+    myth: 'Castor and Pollux, twins with different fathers — one mortal, one not. When Castor died Pollux gave up half his immortality to stay with him, so they alternate between the sky and the underworld together.',
+    stars: [[7.755,28.03,1.14,'Pollux'],[7.577,31.89,1.58,'Castor'],[6.629,16.40,1.92,'Alhena'],
+            [7.335,21.98,3.53,'Wasat'],[6.732,25.13,2.98,'Mebsuta'],[6.383,22.51,2.87,'Tejat']],
+    lines: [[1,0],[0,3],[3,2],[1,4],[4,5],[4,3]]
+  },
+  {
+    name: 'Canis Major', abbr: 'CMa',
+    brightest: { name: 'Sirius', mag: -1.46, note: 'the brightest star in the night sky, 8.6 light years off' },
+    myth: "Orion's hunting dog, at his heels across the winter sky. The Greeks blamed the hottest weeks of summer on Sirius rising with the Sun — the dog days — and the Egyptians used that same rising to predict the Nile flood.",
+    stars: [[6.752,-16.72,-1.46,'Sirius'],[6.378,-17.96,1.98,'Mirzam'],[7.062,-15.63,4.11,'Muliphein'],
+            [7.140,-26.39,1.83,'Wezen'],[6.977,-28.97,1.50,'Adhara'],[7.402,-29.30,2.45,'Aludra'],
+            [6.338,-30.06,3.02,'Furud']],
+    lines: [[1,0],[0,2],[2,3],[3,5],[3,4],[4,6],[0,4]]
+  },
+  {
+    name: 'Aquila', abbr: 'Aql',
+    brightest: { name: 'Altair', mag: 0.77, note: 'one of our closest bright neighbours, 17 light years' },
+    myth: "Zeus's eagle, which carried his thunderbolts and fetched the boy Ganymede up to Olympus. Altair sits at the head; with Vega and Deneb it forms the Summer Triangle, the easiest big shape in a July sky.",
+    stars: [[19.846,8.87,0.77,'Altair'],[19.771,10.61,2.72,'Tarazed'],[19.922,6.41,3.71,'Alshain'],
+            [19.425,3.12,3.36,'Delta Aquilae'],[19.090,13.86,2.99,'Zeta Aquilae'],
+            [20.188,-0.82,3.24,'Theta Aquilae'],[19.100,-4.88,3.44,'Lambda Aquilae']],
+    lines: [[4,1],[1,0],[0,2],[2,5],[0,3],[3,6]]
+  },
+  {
+    name: 'Bootes', abbr: 'Boo',
+    brightest: { name: 'Arcturus', mag: -0.05, note: 'an ageing orange giant, fourth brightest of all' },
+    myth: 'The herdsman, driving the bear around the pole — or Icarius, taught winemaking by Dionysus and killed by shepherds who thought he had poisoned them. Follow the curve of the Dipper handle away from the bowl and you arrive at Arcturus.',
+    stars: [[14.261,19.18,-0.05,'Arcturus'],[14.750,27.07,2.35,'Izar'],[14.535,38.31,3.03,'Seginus'],
+            [15.032,40.39,3.49,'Nekkar'],[15.258,33.31,3.47,'Delta Bootis'],[13.911,18.40,2.68,'Muphrid']],
+    lines: [[0,5],[0,1],[1,4],[4,3],[3,2],[2,0]]
+  }
+  ]
+};
+
+/* ============================================================== projection */
+var D2R = Math.PI / 180, LAT = SKY.latitude * D2R;
+
+/* Right ascension + declination -> position on the unit disc (zenith at the
+   centre, horizon at the rim, north up, east left, because we are looking up).
+   Returns null for anything under the horizon. */
+function project(ra, dec, lst) {
+  var H = (lst - ra) * 15 * D2R, d = dec * D2R,
+      sinAlt = Math.sin(d) * Math.sin(LAT) + Math.cos(d) * Math.cos(LAT) * Math.cos(H);
+  if (sinAlt <= 0.02) return null;
+  var alt = Math.asin(sinAlt), cosAlt = Math.cos(alt),
+      cosAz = (Math.sin(d) - sinAlt * Math.sin(LAT)) / (cosAlt * Math.cos(LAT));
+  cosAz = Math.max(-1, Math.min(1, cosAz));
+  var az = Math.acos(cosAz);
+  if (Math.sin(H) > 0) az = 2 * Math.PI - az;
+  var r = 1 - alt / (Math.PI / 2);
+  return { x: -r * Math.sin(az), y: -r * Math.cos(az), alt: alt / D2R };
+}
+
+/* A fixed scatter of faint field stars, spread evenly over the sphere. */
+var FIELD = (function () {
+  var out = [], seed = 20260917, i, u;
+  function rnd() { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+  for (i = 0; i < 760; i++) {
+    u = rnd() * 2 - 1;                       /* uniform in sin(dec), so no polar clumping */
+    out.push([rnd() * 24, Math.asin(u) / D2R, 3.8 + rnd() * 2.4, rnd() * 6.28]);
+  }
+  return out;
+})();
+
+/* ================================================================= drawing */
+var cv = document.getElementById('sky'), ctx = cv.getContext('2d');
+var size = 620, dpr = 1, lst = 22, hover = null, selected = null, t0 = Date.now();
+
+function fit() {
+  var box = cv.parentNode.clientWidth;
+  size = Math.max(280, Math.min(620, box));
+  dpr = window.devicePixelRatio || 1;
+  cv.style.width = size + 'px';
+  cv.style.height = size + 'px';
+  cv.width = Math.round(size * dpr);
+  cv.height = Math.round(size * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function starRadius(mag) { return Math.max(0.7, Math.min(3.6, 2.6 - mag * 0.52)); }
+
+function draw() {
+  var C = size / 2, R = size / 2 - 14, i, j, k, c, p, s, g,
+      phase = (Date.now() - t0) / 1000;
+
+  ctx.clearRect(0, 0, size, size);
+
+  /* night gradient + horizon disc */
+  g = ctx.createRadialGradient(C, C, 0, C, C, R);
+  g.addColorStop(0, '#0d1424');
+  g.addColorStop(0.75, '#080c16');
+  g.addColorStop(1, '#04060c');
+  ctx.beginPath(); ctx.arc(C, C, R, 0, 6.2832); ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = '#2b3446'; ctx.lineWidth = 1; ctx.stroke();
+
+  /* altitude circles at 30 and 60 degrees */
+  ctx.strokeStyle = 'rgba(127,176,255,.10)';
+  for (k = 1; k <= 2; k++) {
+    ctx.beginPath(); ctx.arc(C, C, R * k / 3, 0, 6.2832); ctx.stroke();
+  }
+
+  /* cardinal points */
+  ctx.fillStyle = '#5c6479';
+  ctx.font = '600 11px ui-monospace, SFMono-Regular, Menlo, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('N', C, C - R + 7);
+  ctx.fillText('S', C, C + R - 7);
+  ctx.fillText('E', C - R + 8, C);
+  ctx.fillText('W', C + R - 8, C);
+
+  /* field stars, with a slow twinkle */
+  for (i = 0; i < FIELD.length; i++) {
+    p = project(FIELD[i][0], FIELD[i][1], lst);
+    if (!p) continue;
+    s = 0.72 + 0.28 * Math.sin(phase * 1.7 + FIELD[i][3]);
+    ctx.globalAlpha = Math.max(0.16, (6.6 - FIELD[i][2]) / 4.2) * s;
+    ctx.beginPath();
+    ctx.arc(C + p.x * R, C + p.y * R, starRadius(FIELD[i][2]) * 0.8, 0, 6.2832);
+    ctx.fillStyle = '#cfd9ef'; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  /* constellations: cache screen positions for hit-testing as we go */
+  for (i = 0; i < SKY.constellations.length; i++) {
+    c = SKY.constellations[i];
+    c.pts = [];
+    c.visible = false;
+    for (j = 0; j < c.stars.length; j++) {
+      p = project(c.stars[j][0], c.stars[j][1], lst);
+      c.pts.push(p ? { x: C + p.x * R, y: C + p.y * R } : null);
+      if (p) c.visible = true;
+    }
+    c.up = 0;
+    for (j = 0; j < c.pts.length; j++) if (c.pts[j]) c.up++;
+  }
+
+  /* lines first, so stars sit on top of them */
+  for (i = 0; i < SKY.constellations.length; i++) {
+    c = SKY.constellations[i];
+    var hot = (c === hover || c === selected);
+    ctx.strokeStyle = hot ? 'rgba(127,176,255,.85)' : 'rgba(178,197,232,.20)';
+    ctx.lineWidth = hot ? 1.7 : 1;
+    ctx.beginPath();
+    for (j = 0; j < c.lines.length; j++) {
+      var a = c.pts[c.lines[j][0]], b = c.pts[c.lines[j][1]];
+      if (!a || !b) continue;
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    }
+    ctx.stroke();
+  }
+
+  /* stars */
+  for (i = 0; i < SKY.constellations.length; i++) {
+    c = SKY.constellations[i];
+    var lit = (c === hover || c === selected);
+    for (j = 0; j < c.pts.length; j++) {
+      if (!c.pts[j]) continue;
+      var rad = starRadius(c.stars[j][2]);
+      s = 0.85 + 0.15 * Math.sin(phase * 2.1 + j * 1.9 + i);
+      if (lit) {
+        ctx.beginPath();
+        ctx.arc(c.pts[j].x, c.pts[j].y, rad * 3.2, 0, 6.2832);
+        ctx.fillStyle = 'rgba(127,176,255,.13)'; ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(c.pts[j].x, c.pts[j].y, rad * s, 0, 6.2832);
+      ctx.fillStyle = lit ? '#e8f0ff' : '#dde6f7';
+      ctx.fill();
+    }
+    if (lit && c.visible) label(c, C);
+  }
+
+  requestAnimationFrame(draw);
+}
+
+/* Name sits at the centre of the stars that are actually above the horizon. */
+function label(c, C) {
+  var sx = 0, sy = 0, n = 0, j;
+  for (j = 0; j < c.pts.length; j++) {
+    if (c.pts[j]) { sx += c.pts[j].x; sy += c.pts[j].y; n++; }
+  }
+  if (!n) return;
+  sx /= n; sy /= n;
+  ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  var w = ctx.measureText(c.name).width + 14;
+  ctx.fillStyle = 'rgba(8,10,16,.82)';
+  ctx.fillRect(sx - w / 2, sy - 32, w, 20);
+  ctx.fillStyle = '#7fb0ff';
+  ctx.fillText(c.name, sx, sy - 22);
+}
+
+/* ============================================================ hit-testing */
+function segDist(px, py, a, b) {
+  var vx = b.x - a.x, vy = b.y - a.y, wx = px - a.x, wy = py - a.y,
+      L = vx * vx + vy * vy, t = L ? (wx * vx + wy * vy) / L : 0;
+  t = Math.max(0, Math.min(1, t));
+  var dx = px - (a.x + t * vx), dy = py - (a.y + t * vy);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function nearest(px, py) {
+  var best = null, bestD = 26, i, j, c, d;
+  for (i = 0; i < SKY.constellations.length; i++) {
+    c = SKY.constellations[i];
+    if (!c.pts || !c.visible) continue;
+    for (j = 0; j < c.lines.length; j++) {
+      var a = c.pts[c.lines[j][0]], b = c.pts[c.lines[j][1]];
+      if (!a || !b) continue;
+      d = segDist(px, py, a, b);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    for (j = 0; j < c.pts.length; j++) {
+      if (!c.pts[j]) continue;
+      d = Math.sqrt(Math.pow(px - c.pts[j].x, 2) + Math.pow(py - c.pts[j].y, 2));
+      if (d < bestD) { bestD = d; best = c; }
+    }
+  }
+  return best;
+}
+
+function atEvent(e) {
+  var r = cv.getBoundingClientRect();
+  return nearest(e.clientX - r.left, e.clientY - r.top);
+}
+
+cv.addEventListener('mousemove', function (e) {
+  var c = atEvent(e);
+  if (c !== hover) {
+    hover = c;
+    cv.style.cursor = c ? 'pointer' : 'crosshair';
+    document.getElementById('hint').textContent = c
+      ? c.name + ' — click for the story'
+      : 'Hover a constellation to trace it, click to read about it.';
+  }
+});
+cv.addEventListener('mouseleave', function () { hover = null; });
+cv.addEventListener('click', function (e) {
+  var c = atEvent(e);
+  if (c) select(c);
+});
+
+/* ================================================================== panel
+   How many of a constellation's stars are above the horizon at the current
+   hour. Computed straight from the projection rather than read off the last
+   drawn frame, so the panel and the list are never a frame behind the slider. */
+function upCount(c) {
+  var n = 0, j;
+  for (j = 0; j < c.stars.length; j++) {
+    if (project(c.stars[j][0], c.stars[j][1], lst)) n++;
+  }
+  return n;
+}
+
+function select(c) {
+  selected = c;
+  document.getElementById('detail').innerHTML =
+    '<div class="pad">' +
+      '<h2>' + c.name + '</h2>' +
+      '<div class="lat">' + c.abbr + ' &middot; ' + upCount(c) + ' of ' + c.stars.length +
+        ' plotted stars above the horizon</div>' +
+      '<p class="myth">' + c.myth + '</p>' +
+      '<div class="star"><div class="k">Brightest star</div>' +
+        '<div class="v">' + c.brightest.name + '<em>mag ' + c.brightest.mag.toFixed(2) + '</em></div>' +
+        '<div class="k" style="margin-top:6px">' + c.brightest.note + '</div></div>' +
+    '</div>';
+  renderList();
+}
+
+function renderList() {
+  var html = '', i, c, up;
+  for (i = 0; i < SKY.constellations.length; i++) {
+    c = SKY.constellations[i];
+    up = upCount(c) > 0;
+    html += '<button type="button" data-i="' + i + '" aria-pressed="' + (c === selected) + '"' +
+            (up ? '' : ' class="down"') + '>' +
+            '<span>' + c.name + '</span>' +
+            '<span class="up">' + (up ? '<b>up</b>' : 'below horizon') + '</span></button>';
+  }
+  document.getElementById('list').innerHTML = html;
+}
+
+document.getElementById('list').addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('button') : null;
+  if (b) select(SKY.constellations[+b.getAttribute('data-i')]);
+});
+
+/* ============================================================ time slider */
+var slider = document.getElementById('time');
+
+function setTime(mins) {
+  var h = Math.floor(mins / 60) % 24, m = mins % 60;
+  document.getElementById('tlabel').textContent =
+    (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  lst = mins / 60;                   /* local sidereal hours, near enough for late September */
+}
+
+slider.addEventListener('input', function () {
+  setTime(+this.value);
+  /* up/down flags and the star count both move with the hour */
+  if (selected) select(selected); else renderList();
+});
+
+window.addEventListener('resize', fit);
+fit();
+setTime(+slider.value);
+draw();
+renderList();
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# ============================================================================
+# Mode 01 of 3 — a single container.
+#
+#   docker compose up -d        ->  http://<host>:8080
+#   docker compose down
+#
+# Serves site/index.html exactly as it was baked into the image at build time.
+# No volumes: this mode is here to prove the image is self-sufficient.
+# ============================================================================
+
+services:
+  web:
+    # The one and only image in this project. Built by scripts/build.sh.
+    image: my-nginx-container:1.0
+
+    # Fixed name so `docker ps` output is readable in the report screenshots.
+    container_name: p2-single
+
+    ports:
+      # host:container — nginx listens on 80 inside, we publish it on 8080.
+      - "8080:80"
+
+    # Comes back after a daemon restart or a container crash, but stays down
+    # once it has been stopped deliberately.
+    restart: unless-stopped

@@ -1,0 +1,51 @@
+# ============================================================================
+# Mode 02 of 3 — five identical replicas of the same container.
+#
+#   docker compose -f docker-compose.scale.yml up -d --scale web=5
+#   docker compose -f docker-compose.scale.yml ps
+#   docker compose -f docker-compose.scale.yml down
+#
+#   ->  http://<host>:8081 ... http://<host>:8085
+#
+# All five replicas serve byte-identical content, because content comes from
+# the image and every replica runs the same image. The point of this mode is
+# horizontal scaling: one service definition, five running containers.
+# ============================================================================
+
+services:
+  web:
+    image: my-nginx-container:1.0
+
+    # NOTE: no container_name here, deliberately. A fixed name can only belong
+    # to one container, so setting it would make --scale fail on the second
+    # replica. Compose names them web-1 ... web-5 instead.
+
+    ports:
+      # A port RANGE, not a single mapping. Compose hands out one host port per
+      # replica from this range, so `--scale web=5` yields 8081, 8082, 8083,
+      # 8084 and 8085, each forwarding to port 80 inside its own container.
+      # A plain "8081:80" would collide the moment a second replica started.
+      - "8081-8085:80"
+
+    networks:
+      # All five sit on one user-defined bridge, so they can reach each other by
+      # service name if they ever needed to. Nothing here does, but this is the
+      # network a load balancer in front of them would join.
+      - p2net
+
+    healthcheck:
+      # Is nginx actually answering, rather than merely running? wget ships with
+      # the busybox userland in alpine, so no extra packages are needed.
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 15s      # how often to re-check once started
+      timeout: 3s        # a probe that hangs longer than this counts as failed
+      retries: 3         # consecutive failures before the container is unhealthy
+      start_period: 5s   # grace window while nginx boots; failures here are free
+
+    restart: unless-stopped
+
+networks:
+  p2net:
+    # An explicit bridge network rather than the default one, so the containers
+    # get DNS resolution by service name and stay isolated from other projects.
+    driver: bridge

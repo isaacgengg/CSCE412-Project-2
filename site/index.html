@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IG — five small tools, one image</title>
+<style>
+:root{
+  --ink:#16181d; --ink-2:#3b4150; --muted:#787f8e;
+  --line:#dde0e7; --paper:#f3f4f7; --card:#fff;
+  --accent:#2b3244;
+  --c-recipe:#b4245f; --c-board:#c8890d; --c-sky:#2563c9; --c-split:#0f8a6a; --c-typing:#7042d6;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+code,kbd,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+
+/* --- shared IG chrome (same on all six pages) --- */
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;height:56px;padding:0 20px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:680;letter-spacing:.01em}
+.brand svg{display:block;fill:var(--accent)}
+.pg{font-size:13px;color:var(--muted)}
+.wrap{max-width:1040px;margin:0 auto;padding:44px 20px 56px}
+footer{border-top:1px solid var(--line);background:var(--card);padding:18px 20px;
+  display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+footer b{color:var(--ink-2);font-weight:600}
+
+/* --- hero --- */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:end;
+  padding-bottom:28px;border-bottom:1px solid var(--line)}
+h1{margin:0 0 10px;font-size:38px;line-height:1.08;letter-spacing:-.03em;font-weight:680}
+.lede{margin:0;max-width:52ch;font-size:17px;color:var(--ink-2)}
+.tag{display:inline-block;margin-bottom:14px;padding:3px 9px;border:1px solid var(--line);
+  border-radius:999px;background:var(--card);font-size:12px;color:var(--muted)}
+.tag .mono{color:var(--ink-2)}
+.glyph{fill:var(--accent);opacity:.12}
+@media(max-width:700px){.hero{grid-template-columns:minmax(0,1fr)}.glyph{display:none}h1{font-size:30px}}
+
+h2{margin:44px 0 4px;font-size:13px;font-weight:650;color:var(--ink);
+  padding-bottom:8px;border-bottom:1px solid var(--line)}
+h2 span{color:var(--muted);font-weight:450}
+
+/* --- run modes --- */
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);margin-top:20px}
+/* min-width:0 — a grid item defaults to min-width:auto, so the long command
+   in the <pre> would otherwise push the panel wider than its track */
+.mode{background:var(--card);padding:18px 16px 16px;min-width:0}
+.mode .n{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mode h3{margin:6px 0 6px;font-size:16px;font-weight:620;letter-spacing:-.01em}
+.mode p{margin:0 0 12px;font-size:13.5px;color:var(--ink-2);min-height:3.2em}
+.mode .ports{font-size:12px;color:var(--muted);margin-bottom:12px}
+pre{margin:0;padding:10px 11px;background:#12151c;color:#dfe4ee;border-radius:5px;
+  font-size:12px;line-height:1.5;overflow-x:auto}
+pre .c{color:#7d879b}
+@media(max-width:820px){.modes{grid-template-columns:minmax(0,1fr)}.mode p{min-height:0}}
+
+/* --- service table --- */
+table{width:100%;border-collapse:collapse;margin-top:18px;font-size:14px}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:0 10px 8px 0;
+  border-bottom:1px solid var(--line)}
+td{padding:13px 10px 13px 0;border-bottom:1px solid var(--line);vertical-align:top}
+tr td:first-child{padding-left:14px;position:relative;font-weight:600;white-space:nowrap}
+tr td:first-child::before{content:"";position:absolute;left:0;top:15px;width:7px;height:7px;
+  border-radius:2px;background:var(--dot,var(--muted))}
+td.desc{color:var(--ink-2);font-weight:400}
+td.port{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+td.port a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+td.port a:hover{border-bottom-color:currentColor}
+td.path{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+@media(max-width:640px){td.path,th.path{display:none}}
+
+.note{margin-top:34px;padding:14px 16px;border-left:3px solid var(--accent);background:var(--card);
+  font-size:13.5px;color:var(--ink-2)}
+.note b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="brand">
+    <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
+      <rect x="2" y="2" width="7" height="7" rx="1.2"/><rect x="15" y="2" width="7" height="7" rx="1.2"/>
+      <rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/>
+      <rect x="2" y="15" width="7" height="7" rx="1.2"/><rect x="15" y="15" width="7" height="7" rx="1.2"/>
+    </svg>
+    IG
+  </span>
+  <span class="pg">Base image</span>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div>
+      <span class="tag">Docker &amp; Compose v2 &middot; <span class="mono">my-nginx-container:1.0</span></span>
+      <h1>Five small tools,<br>one container image.</h1>
+      <p class="lede">IG is a cloud-computing exercise: build a single nginx image once, then run it
+        three different ways &mdash; alone, replicated, and as five distinct services that differ only by
+        the content mounted into them at runtime.</p>
+    </div>
+    <svg class="glyph" viewBox="0 0 24 24" width="132" height="132" aria-hidden="true">
+      <rect x="2" y="2" width="7" height="7" rx="1.2"/><rect x="15" y="2" width="7" height="7" rx="1.2"/>
+      <rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/>
+      <rect x="2" y="15" width="7" height="7" rx="1.2"/><rect x="15" y="15" width="7" height="7" rx="1.2"/>
+    </svg>
+  </section>
+
+  <h2>Three run modes <span>&mdash; same image every time</span></h2>
+  <div class="modes">
+    <div class="mode">
+      <div class="n">01</div>
+      <h3>Single container</h3>
+      <p>One nginx serving the page you are reading, baked into the image at build time.</p>
+      <div class="ports">host port 8080</div>
+      <pre>docker compose up -d</pre>
+    </div>
+    <div class="mode">
+      <div class="n">02</div>
+      <h3>Five replicas</h3>
+      <p>One service scaled to five. Compose hands each replica its own host port from a range.</p>
+      <div class="ports">host ports 8081&ndash;8085</div>
+      <pre>docker compose -f docker-compose.scale.yml \
+  up -d --scale web=5</pre>
+    </div>
+    <div class="mode">
+      <div class="n">03</div>
+      <h3>Five unique services</h3>
+      <p>Five containers, one image, five read-only volume mounts. Content is the only difference.</p>
+      <div class="ports">host ports 8091&ndash;8095</div>
+      <pre>docker compose -f docker-compose.unique.yml \
+  up -d</pre>
+    </div>
+  </div>
+
+  <h2>The five services <span>&mdash; mode 03</span></h2>
+  <table>
+    <thead><tr>
+      <th>Service</th><th>What it does</th><th>Port</th><th class="path">Mounted from</th>
+    </tr></thead>
+    <tbody>
+      <tr style="--dot:var(--c-recipe)">
+        <td>Recipe Scaler</td>
+        <td class="desc">Rescales built-in recipes to any serving count, with honest fractions.</td>
+        <td class="port" data-port="8091">8091</td>
+        <td class="path">./services/recipe</td>
+      </tr>
+      <tr style="--dot:var(--c-board)">
+        <td>Departure Board</td>
+        <td class="desc">A split-flap airport board that flips through live status changes.</td>
+        <td class="port" data-port="8092">8092</td>
+        <td class="path">./services/board</td>
+      </tr>
+      <tr style="--dot:var(--c-sky)">
+        <td>Constellations</td>
+        <td class="desc">Twelve constellations on a canvas sky you can rotate through the night.</td>
+        <td class="port" data-port="8093">8093</td>
+        <td class="path">./services/sky</td>
+      </tr>
+      <tr style="--dot:var(--c-split)">
+        <td>Bill Splitter</td>
+        <td class="desc">Even splits, or itemised ones with tax and tip shared out proportionally.</td>
+        <td class="port" data-port="8094">8094</td>
+        <td class="path">./services/split</td>
+      </tr>
+      <tr style="--dot:var(--c-typing)">
+        <td>Typing Test</td>
+        <td class="desc">Sixty seconds, live WPM and accuracy, and the characters you keep fluffing.</td>
+        <td class="port" data-port="8095">8095</td>
+        <td class="path">./services/typing</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="note"><b>Why this matters.</b> Only one image is ever built. Mode 02 proves the image is
+    stateless enough to replicate; mode 03 proves configuration and content can be injected at run time
+    rather than baked in. Rebuilding an image per service would be the wrong answer to the same problem.</p>
+
+</main>
+
+<footer>
+  <span><b>IG base image</b> &mdash; landing page, served by modes 01 and 02</span>
+  <span>port 8080 (single) &middot; 8081&ndash;8085 (replicas)</span>
+</footer>
+
+<script>
+/* Turn the port numbers into working links against whatever host this page is served from,
+   so the table is clickable on localhost and on an EC2 public DNS name alike. */
+(function () {
+  var host = location.hostname || 'localhost';
+  var cells = document.querySelectorAll('td.port[data-port]');
+  for (var i = 0; i < cells.length; i++) {
+    var p = cells[i].getAttribute('data-port');
+    cells[i].innerHTML = '<a href="' + location.protocol + '//' + host + ':' + p + '/">' + p + '</a>';
+  }
+})();
+</script>
+</body>
+</html>

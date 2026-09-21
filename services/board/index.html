@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IG — Departure Board</title>
+<style>
+:root{
+  --ink:#f1ede3; --ink-2:#b8b2a4; --muted:#7c776c;
+  --line:#2a2b30; --paper:#0b0c0e; --card:#13151a;
+  --accent:#e8a317;
+  --flap:#1b1d23; --flap-hi:#23262e;
+  --ok:#e8a317; --go:#5fc27e; --late:#e8654b; --gone:#5e5a52; --call:#f2e06a;
+  --cw:18px;  /* one flap cell */
+  --cg:2px;   /* gap between flaps */
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+
+/* --- shared IG chrome, dark variant --- */
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;height:56px;padding:0 20px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:680;letter-spacing:.01em}
+.brand svg{display:block;fill:var(--accent)}
+.pg{font-size:13px;color:var(--muted)}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 20px 48px}
+footer{border-top:1px solid var(--line);background:var(--card);padding:18px 20px;
+  display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+footer b{color:var(--ink-2);font-weight:600}
+
+/* --- board header --- */
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:22px}
+h1{margin:0;font-size:27px;line-height:1.1;letter-spacing:-.02em;font-weight:660}
+h1 small{display:block;margin-top:5px;font-size:12.5px;font-weight:450;letter-spacing:0;color:var(--muted)}
+.clock{text-align:right}
+.clock .t{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:28px;
+  line-height:1;font-variant-numeric:tabular-nums;color:var(--accent);letter-spacing:.01em}
+.clock .z{font-size:11.5px;color:var(--muted);margin-top:5px}
+
+/* --- the board itself --- */
+.board{background:#090a0c;border:1px solid var(--line);padding:14px 14px 6px}
+.labels,.row{display:flex;gap:calc(var(--cg) * 4)}
+.labels{padding:0 0 9px;border-bottom:1px solid var(--line);margin-bottom:9px}
+.labels .col{font-size:10.5px;letter-spacing:.09em;color:var(--muted);font-weight:600}
+.row{padding:3px 0}
+.col{display:flex;gap:var(--cg);flex:none}
+
+.cell{position:relative;flex:none;width:var(--cw);height:30px;background:var(--flap);
+  border-radius:2px;overflow:hidden;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  font-size:17px;line-height:30px;text-align:center;color:var(--ink);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045)}
+.cell::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;
+  background:rgba(0,0,0,.6);pointer-events:none}
+.cell .g{display:block;transform-origin:top center;will-change:transform}
+/* One looping half-flap while a cell is cycling; class comes off when it lands. */
+@keyframes flap{0%{transform:scaleY(.08);filter:brightness(.55)}100%{transform:scaleY(1);filter:brightness(1)}}
+.cell.flipping{background:var(--flap-hi)}
+.cell.flipping .g{animation:flap 40ms linear infinite}
+
+.c-time .cell,.c-gate .cell{color:var(--accent)}
+.c-status.s-ontime .cell{color:var(--ok)}
+.c-status.s-board  .cell{color:var(--go)}
+.c-status.s-call   .cell{color:var(--call)}
+.c-status.s-late   .cell{color:var(--late)}
+.c-status.s-gone   .cell{color:var(--gone)}
+
+/* --- legend --- */
+.key{display:flex;gap:18px;flex-wrap:wrap;margin-top:20px;font-size:12px;color:var(--muted)}
+.key span{display:flex;align-items:center;gap:6px}
+.key i{width:7px;height:7px;border-radius:2px;display:block}
+
+/* 45 flaps at 18px need ~996px of viewport. Below that the airline name goes
+   first — its code is still there in the flight number — and the remaining 36
+   shrink in one more step. Each width below was measured, not guessed. */
+@media(max-width:1000px){
+  .hide-sm{display:none}
+  .cell{height:28px;font-size:16px;line-height:28px}
+}
+@media(max-width:810px){
+  :root{--cw:15px;--cg:1px}
+  .cell{height:24px;font-size:13px;line-height:24px}
+  .labels,.row{gap:calc(var(--cg) * 6)}
+}
+@media(max-width:680px){
+  /* Below this the remaining 36 flaps cannot fit legibly, so the board pans
+     sideways instead of shrinking away. The page itself never scrolls. */
+  .board{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+  .labels,.row{width:max-content}
+  :root{--cw:13px}
+  .cell{height:21px;font-size:11px;line-height:21px;border-radius:1px}
+}
+@media(max-width:480px){
+  .bar{padding:0 14px}.wrap{padding:16px 13px 40px}
+  .board{padding:10px 10px 6px}
+  h1{font-size:21px}h1 small{font-size:11.5px}.clock .t{font-size:22px}
+  .labels .col{font-size:9.5px;letter-spacing:.05em}
+  .head{padding-bottom:14px;margin-bottom:16px}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="brand">
+    <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
+      <rect x="2" y="2" width="7" height="7" rx="1.2"/><rect x="15" y="2" width="7" height="7" rx="1.2"/>
+      <rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/>
+      <rect x="2" y="15" width="7" height="7" rx="1.2"/><rect x="15" y="15" width="7" height="7" rx="1.2"/>
+    </svg>
+    IG
+  </span>
+  <span class="pg">Departure Board</span>
+</header>
+
+<main class="wrap">
+  <div class="head">
+    <h1>Departures
+      <small>Kestrel Field International &middot; Terminal 2 &middot; all gates</small></h1>
+    <div class="clock">
+      <div class="t" id="clock">--:--:--</div>
+      <div class="z">local time, updating live</div>
+    </div>
+  </div>
+
+  <section class="board" id="board" aria-label="Departures board"></section>
+
+  <div class="key">
+    <span><i style="background:var(--ok)"></i>On time</span>
+    <span><i style="background:var(--go)"></i>Boarding</span>
+    <span><i style="background:var(--call)"></i>Last call</span>
+    <span><i style="background:var(--late)"></i>Delayed</span>
+    <span><i style="background:var(--gone)"></i>Departed</span>
+  </div>
+</main>
+
+<footer>
+  <span><b>IG Departure Board</b> &mdash; service 2 of 5</span>
+  <span>port 8092</span>
+</footer>
+
+<script>
+/* ------------------------------------------------------------------ data */
+var DATA = {
+  /* Every glyph a flap can show. Order is the order it cycles through. */
+  alphabet: ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-.',
+
+  /* n is the flap count for that field, and therefore a hard character limit:
+     45 flaps in total is what fits the 1040px page at a legible cell size. */
+  columns: [
+    { k: 'time',    n: 5,  label: 'TIME' },
+    { k: 'airline', n: 9,  label: 'AIRLINE', small: false },
+    { k: 'flight',  n: 7,  label: 'FLIGHT' },
+    { k: 'dest',    n: 12, label: 'DESTINATION' },
+    { k: 'gate',    n: 3,  label: 'GATE' },
+    { k: 'status',  n: 9,  label: 'STATUS' }
+  ],
+
+  airlines: [
+    { name: 'NORTHWIND', code: 'NW' },
+    { name: 'CALEDON',   code: 'CD' },
+    { name: 'ALTAIR',    code: 'AT' },
+    { name: 'HALCYON',   code: 'HY' },
+    { name: 'MERIDIAN',  code: 'MR' },
+    { name: 'KESTREL',   code: 'KS' },
+    { name: 'BOREAL',    code: 'BO' },
+    { name: 'ZEPHYR',    code: 'ZP' },
+    { name: 'IG AIR',    code: 'IG' },
+    { name: 'ORISON',    code: 'OR' }
+  ],
+
+  destinations: ['REYKJAVIK', 'LISBON', 'TBILISI', 'VALPARAISO', 'SAPPORO',
+    'MARRAKECH', 'TROMSO', 'DUBROVNIK', 'ALMATY', 'PORTO', 'HALIFAX',
+    'NAIROBI', 'PALERMO', 'BERGEN', 'TALLINN', 'THESSALONIKI', 'GOTHENBURG',
+    'CATANIA', 'BILBAO', 'KRAKOW', 'MONTEVIDEO', 'ULAANBAATAR'],
+
+  gates: ['A1', 'A4', 'A7', 'A12', 'B2', 'B3', 'B9', 'B14', 'C5', 'C6', 'C11', 'D2', 'D8'],
+
+  /* The life of a departure, in order. cls picks the colour. */
+  statuses: [
+    { text: 'ON TIME',   cls: 's-ontime' },
+    { text: 'BOARDING',  cls: 's-board'  },
+    { text: 'LAST CALL', cls: 's-call'   },
+    { text: 'DEPARTED',  cls: 's-gone'   }
+  ],
+  delayed: { text: 'DELAYED', cls: 's-late' },
+
+  rows: 12,
+  flipMs: 40,     /* one glyph step */
+  staggerMs: 26,  /* per-cell offset, so a field ripples left to right */
+  tickMs: 2400    /* how often something on the board changes */
+};
+
+var ALPHA = DATA.alphabet;
+
+/* -------------------------------------------------------------- the flaps */
+function pad(s, n) {
+  s = String(s).toUpperCase();
+  if (s.length > n) s = s.slice(0, n);
+  while (s.length < n) s += ' ';
+  return s;
+}
+
+/* Cycle one cell forward through the alphabet until it lands on ch. */
+function flip(cell, ch, delay) {
+  var target = ALPHA.indexOf(ch);
+  if (target < 0) target = 0;
+  if (cell.idx === target && !cell.timer) return;
+  if (cell.timer) clearTimeout(cell.timer);
+
+  function step() {
+    cell.idx = (cell.idx + 1) % ALPHA.length;
+    cell.g.textContent = ALPHA.charAt(cell.idx);
+    if (cell.idx !== target) {
+      cell.timer = setTimeout(step, DATA.flipMs);
+    } else {
+      cell.timer = null;
+      cell.el.className = 'cell';
+    }
+  }
+  cell.el.className = 'cell flipping';
+  cell.timer = setTimeout(step, delay || 0);
+}
+
+function setField(field, text) {
+  var s = pad(text, field.cells.length), i;
+  for (i = 0; i < field.cells.length; i++) {
+    flip(field.cells[i], s.charAt(i), i * DATA.staggerMs);
+  }
+}
+
+/* ------------------------------------------------------------------ build */
+var board = document.getElementById('board');
+var rows = [];
+
+function colWidth(n) {
+  return 'width:calc(' + n + ' * var(--cw) + ' + (n - 1) + ' * var(--cg))';
+}
+
+(function build() {
+  var html = '<div class="labels">', c, i, r;
+
+  for (i = 0; i < DATA.columns.length; i++) {
+    c = DATA.columns[i];
+    html += '<div class="col' + (c.small === false ? ' hide-sm' : '') + '" style="' +
+            colWidth(c.n) + '">' + c.label + '</div>';
+  }
+  html += '</div>';
+
+  for (r = 0; r < DATA.rows; r++) {
+    html += '<div class="row">';
+    for (i = 0; i < DATA.columns.length; i++) {
+      c = DATA.columns[i];
+      html += '<div class="col c-' + c.k + (c.small === false ? ' hide-sm' : '') + '">';
+      for (var k = 0; k < c.n; k++) html += '<span class="cell"><span class="g">&nbsp;</span></span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  board.innerHTML = html;
+
+  /* Wrap the DOM in little cell objects that remember where in the alphabet they are. */
+  var rowEls = board.getElementsByClassName('row');
+  for (r = 0; r < rowEls.length; r++) {
+    var fields = {}, colEls = rowEls[r].getElementsByClassName('col');
+    for (i = 0; i < DATA.columns.length; i++) {
+      var cellEls = colEls[i].getElementsByClassName('cell'), cells = [];
+      for (var j = 0; j < cellEls.length; j++) {
+        cells.push({ el: cellEls[j], g: cellEls[j].firstChild, idx: 0, timer: null });
+      }
+      fields[DATA.columns[i].k] = { el: colEls[i], cells: cells };
+    }
+    rows.push({ fields: fields, flight: null });
+  }
+})();
+
+/* ------------------------------------------------------------- the flights */
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+function hhmm(mins) {
+  mins = ((mins % 1440) + 1440) % 1440;
+  var h = Math.floor(mins / 60), m = mins % 60;
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+}
+
+var nextDeparture;  /* minutes past midnight for the next flight we invent */
+
+function newFlight() {
+  var a = pick(DATA.airlines);
+  nextDeparture += 6 + Math.floor(Math.random() * 11);
+  return {
+    mins: nextDeparture,
+    airline: a.name,
+    flight: a.code + ' ' + (100 + Math.floor(Math.random() * 9800)),
+    dest: pick(DATA.destinations),
+    gate: pick(DATA.gates),
+    stage: 0,          /* index into DATA.statuses */
+    late: false
+  };
+}
+
+function drawRow(row, keys) {
+  var f = row.flight, i,
+      st = f.late ? DATA.delayed : DATA.statuses[f.stage],
+      vals = { time: hhmm(f.mins), airline: f.airline, flight: f.flight,
+               dest: f.dest, gate: f.gate, status: st.text };
+  keys = keys || ['time', 'airline', 'flight', 'dest', 'gate', 'status'];
+  for (i = 0; i < keys.length; i++) setField(row.fields[keys[i]], vals[keys[i]]);
+  row.fields.status.el.className = 'col c-status ' + st.cls;
+}
+
+/* Fill the board, staggered top to bottom so it reads as booting up. */
+(function seed() {
+  var now = new Date();
+  nextDeparture = now.getHours() * 60 + now.getMinutes() + 4;
+  for (var r = 0; r < rows.length; r++) {
+    rows[r].flight = newFlight();
+    /* a few rows start already in progress, so the board is not uniformly "ON TIME" */
+    if (r === 0) rows[r].flight.stage = 2;
+    else if (r === 1) rows[r].flight.stage = 1;
+    else if (r === 4) rows[r].flight.late = true;
+    (function (row, delay) {
+      setTimeout(function () { drawRow(row); }, delay);
+    })(rows[r], r * 140);
+  }
+})();
+
+/* --------------------------------------------------------------- the timer
+   One change per tick, so there is always something flipping but the board
+   never dissolves into noise. */
+setInterval(function () {
+  var row = rows[Math.floor(Math.random() * rows.length)], f = row.flight;
+
+  if (f.stage >= DATA.statuses.length - 1) {
+    /* Departed. A real board keeps its rows in time order, so rather than drop
+       a brand new later flight into this slot, shift everything below up one
+       and invent a fresh flight for the bottom row. Every row from here down
+       flips at once, which is the cascade the whole thing exists for. */
+    var at = rows.indexOf(row), i;
+    for (i = at; i < rows.length - 1; i++) rows[i].flight = rows[i + 1].flight;
+    rows[rows.length - 1].flight = newFlight();
+    for (i = at; i < rows.length; i++) drawRow(rows[i]);
+    return;
+  }
+  if (!f.late && f.stage === 0 && Math.random() < 0.22) {
+    /* Bad news, and the revised time flips in too. Kept small so the row does
+       not jump far out of order. */
+    f.late = true;
+    f.mins += 10 + Math.floor(Math.random() * 26);
+    drawRow(row, ['time', 'status']);
+    return;
+  }
+  if (f.late && Math.random() < 0.5) {
+    f.late = false;                 /* recovered, resumes its normal progression */
+  }
+  f.stage++;
+  if (Math.random() < 0.15) { f.gate = pick(DATA.gates); drawRow(row, ['gate', 'status']); }
+  else drawRow(row, ['status']);
+}, DATA.tickMs);
+
+/* ------------------------------------------------------------------ clock */
+(function clock() {
+  var el = document.getElementById('clock');
+  function tick() {
+    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    el.textContent = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>

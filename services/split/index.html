@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IG — Bill Splitter</title>
+<style>
+:root{
+  --ink:#16181d; --ink-2:#3b4150; --muted:#787f8e;
+  --line:#dde0e7; --paper:#f3f4f7; --card:#fff;
+  --accent:#0f8a6a; --accent-soft:#e7f5f0;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+/* .simple is display:grid, which would otherwise beat the UA rule for [hidden] */
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+
+/* --- shared IG chrome --- */
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;height:56px;padding:0 20px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:680;letter-spacing:.01em}
+.brand svg{display:block;fill:var(--accent)}
+.pg{font-size:13px;color:var(--muted)}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 20px 56px}
+footer{border-top:1px solid var(--line);background:var(--card);padding:18px 20px;
+  display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+footer b{color:var(--ink-2);font-weight:600}
+
+h1{margin:0 0 6px;font-size:27px;line-height:1.1;letter-spacing:-.025em;font-weight:660}
+.lede{margin:0 0 22px;max-width:56ch;font-size:14.5px;color:var(--ink-2)}
+
+/* --- mode switch --- */
+.modes{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:26px}
+.modes button{appearance:none;background:none;border:0;border-bottom:2px solid transparent;
+  padding:9px 14px;margin-bottom:-1px;font:inherit;font-size:14px;color:var(--muted);cursor:pointer}
+.modes button:hover{color:var(--ink)}
+.modes button[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+
+/* --- form bits, shared by both modes --- */
+label.f{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+input[type=text],input[type=number]{width:100%;font:inherit;padding:8px 10px;color:var(--ink);
+  background:var(--card);border:1px solid var(--line);border-radius:4px}
+input[type=number]{font-variant-numeric:tabular-nums}
+input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+.money{position:relative}
+.money span{position:absolute;left:10px;top:9px;color:var(--muted);font-size:14px}
+.money input{padding-left:24px}
+
+.btn{appearance:none;font:inherit;font-size:13.5px;padding:8px 14px;border-radius:4px;cursor:pointer;
+  background:var(--card);color:var(--ink-2);border:1px solid var(--line)}
+.btn:hover{border-color:#b9bfcb;color:var(--ink)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.pri:hover{background:#0c7358;border-color:#0c7358}
+
+/* --- simple mode --- */
+.simple{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:36px;align-items:start}
+.fields{display:grid;gap:18px;max-width:340px}
+.tipset{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tipset button{appearance:none;font:inherit;font-size:13px;padding:5px 11px;cursor:pointer;
+  background:var(--card);border:1px solid var(--line);border-radius:999px;color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+.tipset button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);
+  color:var(--accent);font-weight:600}
+.stepper{display:flex;align-items:stretch;gap:0}
+.stepper button{width:40px;flex:none;font-size:18px;line-height:1;background:var(--card);
+  border:1px solid var(--line);cursor:pointer;color:var(--ink-2)}
+.stepper button:first-child{border-radius:4px 0 0 4px}
+.stepper button:last-child{border-radius:0 4px 4px 0}
+.stepper input{border-radius:0;border-left:0;border-right:0;text-align:center;font-weight:600}
+
+.answer{border:1px solid var(--line);background:var(--card);padding:22px;
+  border-top:3px solid var(--accent)}
+.answer .k{font-size:12.5px;color:var(--muted)}
+.answer .big{font-size:52px;line-height:1;font-weight:670;letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums;margin:6px 0 4px}
+.answer .big i{font-style:normal;font-size:26px;font-weight:550;color:var(--muted);margin-right:2px}
+.answer .sub{font-size:13px;color:var(--muted);margin-bottom:16px}
+.answer dl{margin:0;padding-top:14px;border-top:1px solid var(--line);
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;font-size:13.5px}
+.answer dt{color:var(--muted)}
+.answer dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-weight:550}
+.answer dd.tot{color:var(--accent);font-weight:650}
+
+/* --- itemised mode --- */
+h2{margin:0 0 12px;font-size:12.5px;font-weight:650;padding-bottom:9px;
+  border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h2 em{font-style:normal;font-weight:450;color:var(--muted)}
+
+.people{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:26px}
+.person{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:999px;
+  background:var(--card);overflow:hidden}
+.person input{width:8.5em;border:0;border-radius:0;padding:6px 4px 6px 12px;font-size:13.5px}
+.person input:focus{outline:2px solid var(--accent);outline-offset:-2px}
+.person button{appearance:none;border:0;background:none;padding:6px 10px 6px 4px;cursor:pointer;
+  color:var(--muted);font-size:15px;line-height:1}
+.person button:hover{color:#c0392b}
+
+.items{border:1px solid var(--line);background:var(--card)}
+.item{display:grid;grid-template-columns:minmax(0,1fr) 110px minmax(0,1.1fr) 38px;gap:10px;
+  padding:11px 12px;border-bottom:1px solid var(--line);align-items:center}
+.item:last-child{border-bottom:0}
+/* grid items default to min-width:auto; an <input> would claim ~20 characters */
+.item>*,.itemhead>*,.simple>*{min-width:0}
+.item .who{display:flex;gap:5px;flex-wrap:wrap}
+.item .who button{appearance:none;font:inherit;font-size:12px;padding:4px 9px;cursor:pointer;
+  background:var(--paper);border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+.item .who button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);
+  color:#fff;font-weight:600}
+.item .del{appearance:none;border:0;background:none;color:var(--muted);font-size:17px;cursor:pointer;
+  padding:4px;line-height:1;justify-self:end}
+.item .del:hover{color:#c0392b}
+.item.unassigned{background:#fffaf0}
+.itemhead{display:grid;grid-template-columns:minmax(0,1fr) 110px minmax(0,1.1fr) 38px;gap:10px;
+  padding:0 12px 8px;font-size:11.5px;color:var(--muted)}
+.rowtools{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+
+.extras{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:420px;margin-top:26px}
+
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+th{text-align:right;font-size:11.5px;font-weight:600;color:var(--muted);padding:0 0 8px 10px;
+  border-bottom:1px solid var(--line)}
+th:first-child{text-align:left;padding-left:0}
+td{padding:11px 0 11px 10px;border-bottom:1px solid var(--line);text-align:right;
+  font-variant-numeric:tabular-nums}
+td:first-child{text-align:left;padding-left:0;font-weight:600}
+td.owe{font-weight:660;color:var(--accent);font-size:15.5px}
+tfoot td{border-bottom:0;color:var(--muted);font-weight:550}
+tfoot td:first-child{color:var(--muted);font-weight:450}
+.warn{margin-top:14px;padding:11px 13px;border-left:3px solid #d9a21b;background:#fffaf0;
+  font-size:13px;color:var(--ink-2)}
+
+@media(max-width:860px){
+  .simple{grid-template-columns:minmax(0,1fr);gap:26px}
+  .answer .big{font-size:44px}
+}
+@media(max-width:640px){
+  .item,.itemhead{grid-template-columns:minmax(0,1fr) 92px 32px}
+  .item .who{grid-column:1 / -1}
+  .itemhead span:nth-child(3){display:none}
+  .extras{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:480px){
+  .bar{padding:0 14px}.wrap{padding:18px 14px 44px}
+  h1{font-size:22px}
+  .answer{padding:18px}
+  table{font-size:13px}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="brand">
+    <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
+      <rect x="2" y="2" width="7" height="7" rx="1.2"/><rect x="15" y="2" width="7" height="7" rx="1.2"/>
+      <rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/>
+      <rect x="2" y="15" width="7" height="7" rx="1.2"/><rect x="15" y="15" width="7" height="7" rx="1.2"/>
+    </svg>
+    IG
+  </span>
+  <span class="pg">Bill Splitter</span>
+</header>
+
+<main class="wrap">
+  <h1>Work out who owes what</h1>
+  <p class="lede">Split a bill evenly, or item by item when somebody had the lobster and somebody else
+    had a soup. Tax and tip are shared out in proportion to what each person actually ordered.</p>
+
+  <nav class="modes" role="tablist">
+    <button type="button" role="tab" id="m-simple" aria-selected="true">Even split</button>
+    <button type="button" role="tab" id="m-items" aria-selected="false">Itemised</button>
+  </nav>
+
+  <!-- ============================== even split ============================== -->
+  <section class="simple" id="simple">
+    <div class="fields">
+      <div>
+        <label class="f" for="s-total">Bill total, before tip</label>
+        <div class="money"><span>$</span>
+          <input type="number" id="s-total" min="0" step="0.01" value="86.40" inputmode="decimal">
+        </div>
+      </div>
+      <div>
+        <label class="f" for="s-tip">Tip</label>
+        <div class="money" style="max-width:130px"><span>%</span>
+          <input type="number" id="s-tip" min="0" max="100" step="1" value="18" inputmode="decimal">
+        </div>
+        <div class="tipset" id="tipset"></div>
+      </div>
+      <div>
+        <label class="f" for="s-people">People</label>
+        <div class="stepper" style="max-width:170px">
+          <button type="button" id="s-minus" aria-label="One fewer person">&minus;</button>
+          <input type="number" id="s-people" min="1" max="50" step="1" value="4">
+          <button type="button" id="s-plus" aria-label="One more person">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="answer">
+      <div class="k">Each person pays</div>
+      <div class="big" id="s-each"><i>$</i>25.49</div>
+      <div class="sub" id="s-note"></div>
+      <dl>
+        <dt>Bill</dt><dd id="s-bill"></dd>
+        <dt id="s-tiplab">Tip</dt><dd id="s-tipamt"></dd>
+        <dt>Total</dt><dd class="tot" id="s-grand"></dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- =============================== itemised =============================== -->
+  <section id="items" hidden>
+    <h2>Who is here <em id="p-count"></em></h2>
+    <div class="people" id="people"></div>
+
+    <h2>What was ordered <em>tap names to assign an item to one or more people</em></h2>
+    <div class="itemhead"><span>Item</span><span style="text-align:right">Price</span>
+      <span>Shared by</span><span></span></div>
+    <div class="items" id="itemlist"></div>
+    <div class="rowtools">
+      <button type="button" class="btn pri" id="add-item">Add an item</button>
+      <button type="button" class="btn" id="all-item">Assign leftovers to everyone</button>
+    </div>
+
+    <div class="extras">
+      <div>
+        <label class="f" for="i-tax">Tax on the receipt</label>
+        <div class="money"><span>$</span>
+          <input type="number" id="i-tax" min="0" step="0.01" value="7.12" inputmode="decimal">
+        </div>
+      </div>
+      <div>
+        <label class="f" for="i-tip">Tip, on the pre-tax subtotal</label>
+        <div class="money"><span>%</span>
+          <input type="number" id="i-tip" min="0" max="100" step="1" value="18" inputmode="decimal">
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:34px">The damage</h2>
+    <table id="result"></table>
+    <div id="notice"></div>
+  </section>
+</main>
+
+<footer>
+  <span><b>IG Bill Splitter</b> &mdash; service 4 of 5</span>
+  <span>port 8094</span>
+</footer>
+
+<script>
+/* ==================================================================== data
+   Starting state: a plausible dinner, so the page is useful on arrival. */
+var DATA = {
+  tipPresets: [0, 10, 15, 18, 20, 25],
+  people: ['Ada', 'Rufus', 'Nell', 'Omar'],
+  items: [
+    { name: 'Charred sprouts',       price: 9.00,  who: [0, 1, 2, 3] },
+    { name: 'Half chicken',          price: 24.00, who: [0, 1] },
+    { name: 'Cacio e pepe',          price: 19.50, who: [2] },
+    { name: 'Lamb ragu',             price: 26.00, who: [3] },
+    { name: 'Bottle of the orange',  price: 38.00, who: [0, 2, 3] },
+    { name: 'Affogato',              price: 7.50,  who: [1] }
+  ]
+};
+
+var $ = function (id) { return document.getElementById(id); };
+function money(cents) { return '$' + (cents / 100).toFixed(2); }
+function cents(x) { return Math.round((Number(x) || 0) * 100); }
+
+/* ================================================================ mode tabs */
+function mode(which) {
+  var isSimple = which === 'simple';
+  $('simple').hidden = !isSimple;
+  $('items').hidden = isSimple;
+  $('m-simple').setAttribute('aria-selected', isSimple);
+  $('m-items').setAttribute('aria-selected', !isSimple);
+}
+$('m-simple').addEventListener('click', function () { mode('simple'); });
+$('m-items').addEventListener('click', function () { mode('items'); renderItems(); });
+
+/* ============================================================== even split */
+(function buildTips() {
+  var html = '', i;
+  for (i = 0; i < DATA.tipPresets.length; i++) {
+    html += '<button type="button" data-tip="' + DATA.tipPresets[i] + '" aria-pressed="false">' +
+            DATA.tipPresets[i] + '%</button>';
+  }
+  $('tipset').innerHTML = html;
+  $('tipset').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (!b) return;
+    $('s-tip').value = b.getAttribute('data-tip');
+    renderSimple();
+  });
+})();
+
+function renderSimple() {
+  var bill = cents($('s-total').value),
+      tipPct = Math.max(0, Number($('s-tip').value) || 0),
+      n = Math.max(1, Math.round(Number($('s-people').value) || 1)),
+      tip = Math.round(bill * tipPct / 100),
+      grand = bill + tip,
+      /* Cents rarely divide evenly, so say who covers the odd pennies. */
+      base = Math.floor(grand / n),
+      odd = grand - base * n;
+
+  $('s-each').innerHTML = '<i>$</i>' + ((odd ? base + 1 : base) / 100).toFixed(2);
+  $('s-note').textContent = odd
+    ? odd + ' of the ' + n + ' pay ' + money(base + 1) + ', the rest ' + money(base)
+    : 'splits exactly ' + n + ' ways, no odd pennies';
+  $('s-bill').textContent = money(bill);
+  $('s-tiplab').textContent = 'Tip (' + tipPct + '%)';
+  $('s-tipamt').textContent = money(tip);
+  $('s-grand').textContent = money(grand);
+
+  var bs = $('tipset').getElementsByTagName('button'), i;
+  for (i = 0; i < bs.length; i++) {
+    bs[i].setAttribute('aria-pressed', Number(bs[i].getAttribute('data-tip')) === tipPct);
+  }
+}
+
+$('s-total').addEventListener('input', renderSimple);
+$('s-tip').addEventListener('input', renderSimple);
+$('s-people').addEventListener('input', renderSimple);
+$('s-minus').addEventListener('click', function () {
+  $('s-people').value = Math.max(1, (Number($('s-people').value) || 1) - 1); renderSimple();
+});
+$('s-plus').addEventListener('click', function () {
+  $('s-people').value = Math.min(50, (Number($('s-people').value) || 1) + 1); renderSimple();
+});
+
+/* =============================================================== allocation
+   Split `total` cents across `weights` so the parts are proportional AND add
+   back up to exactly `total`. Floor everything, then hand the leftover cents
+   to the largest remainders — the standard largest-remainder method. */
+function allocate(total, weights) {
+  var n = weights.length, sum = 0, i,
+      out = new Array(n), rem = [];
+  for (i = 0; i < n; i++) sum += weights[i];
+  if (n === 0) return out;
+  if (sum <= 0) {                                 /* nothing to weigh by: split evenly */
+    for (i = 0; i < n; i++) out[i] = Math.floor(total / n);
+    for (i = 0; i < total - Math.floor(total / n) * n; i++) out[i]++;
+    return out;
+  }
+  var used = 0;
+  for (i = 0; i < n; i++) {
+    var exact = total * weights[i] / sum;
+    out[i] = Math.floor(exact);
+    used += out[i];
+    rem.push({ i: i, f: exact - out[i] });
+  }
+  rem.sort(function (a, b) { return b.f - a.f || a.i - b.i; });
+  for (i = 0; i < total - used; i++) out[rem[i % n].i]++;
+  return out;
+}
+
+/* ================================================================ itemised */
+function renderPeople() {
+  var html = '', i;
+  for (i = 0; i < DATA.people.length; i++) {
+    html += '<span class="person"><input type="text" data-i="' + i + '" value="' +
+            DATA.people[i].replace(/"/g, '&quot;') + '" aria-label="Name">' +
+            (DATA.people.length > 1
+              ? '<button type="button" data-drop="' + i + '" aria-label="Remove">&times;</button>'
+              : '') + '</span>';
+  }
+  html += '<button type="button" class="btn" id="add-person">Add a person</button>';
+  $('people').innerHTML = html;
+  $('p-count').textContent = DATA.people.length + ' people';
+}
+
+function renderItemRows() {
+  var html = '', i, j, it;
+  for (i = 0; i < DATA.items.length; i++) {
+    it = DATA.items[i];
+    html += '<div class="item' + (it.who.length ? '' : ' unassigned') + '">' +
+            '<input type="text" data-name="' + i + '" value="' +
+              it.name.replace(/"/g, '&quot;') + '" aria-label="Item name">' +
+            '<div class="money"><span>$</span><input type="number" step="0.01" min="0" ' +
+              'inputmode="decimal" data-price="' + i + '" value="' + it.price.toFixed(2) +
+              '" aria-label="Price"></div>' +
+            '<div class="who">';
+    for (j = 0; j < DATA.people.length; j++) {
+      html += '<button type="button" data-item="' + i + '" data-who="' + j + '" aria-pressed="' +
+              (it.who.indexOf(j) > -1) + '">' + DATA.people[j] + '</button>';
+    }
+    html += '</div><button type="button" class="del" data-del="' + i +
+            '" aria-label="Delete item">&times;</button></div>';
+  }
+  if (!DATA.items.length) {
+    html = '<div class="item" style="color:var(--muted)">No items yet.</div>';
+  }
+  $('itemlist').innerHTML = html;
+}
+
+function renderTotals() {
+  var n = DATA.people.length, i, j, it,
+      shares = [], subtotal = 0, orphan = 0;
+  for (i = 0; i < n; i++) shares.push(0);
+
+  /* Each person's raw claim: their equal fraction of every item they are on. */
+  for (i = 0; i < DATA.items.length; i++) {
+    it = DATA.items[i];
+    var p = cents(it.price);
+    subtotal += p;
+    if (!it.who.length) { orphan += p; continue; }
+    for (j = 0; j < it.who.length; j++) {
+      if (it.who[j] < n) shares[it.who[j]] += p / it.who.length;
+    }
+  }
+
+  var tipPct = Math.max(0, Number($('i-tip').value) || 0),
+      tax = cents($('i-tax').value),
+      tip = Math.round(subtotal * tipPct / 100),
+      claimed = subtotal - orphan,
+      /* Every column is allocated by the same weights, so rows and columns
+         both add up to the cent. */
+      colSub = allocate(claimed, shares),
+      colTax = allocate(tax, shares),
+      colTip = allocate(tip, shares),
+      html = '<thead><tr><th>Person</th><th>Ordered</th><th>Tax</th><th>Tip</th><th>Owes</th></tr>' +
+             '</thead><tbody>', grand = 0;
+
+  for (i = 0; i < n; i++) {
+    var owed = colSub[i] + colTax[i] + colTip[i];
+    grand += owed;
+    html += '<tr><td>' + DATA.people[i] + '</td><td>' + money(colSub[i]) + '</td><td>' +
+            money(colTax[i]) + '</td><td>' + money(colTip[i]) + '</td><td class="owe">' +
+            money(owed) + '</td></tr>';
+  }
+  html += '</tbody><tfoot><tr><td>Totals</td><td>' + money(claimed) + '</td><td>' + money(tax) +
+          '</td><td>' + money(tip) + '</td><td>' + money(grand) + '</td></tr></tfoot>';
+  $('result').innerHTML = html;
+
+  $('notice').innerHTML = orphan
+    ? '<p class="warn"><b>' + money(orphan) + '</b> of items are not assigned to anyone yet, so ' +
+      'they are left out of the split. The receipt total would be ' +
+      money(subtotal + tax + tip) + '.</p>'
+    : '';
+}
+
+function renderItems() { renderPeople(); renderItemRows(); renderTotals(); }
+
+/* One delegated listener each for clicks and edits across the whole section. */
+$('items').addEventListener('click', function (e) {
+  var t = e.target.closest ? e.target.closest('button') : null;
+  if (!t) return;
+  var a;
+  if (t.id === 'add-person') {
+    DATA.people.push('Person ' + (DATA.people.length + 1));
+    renderItems();
+  } else if ((a = t.getAttribute('data-drop')) !== null) {
+    var k = +a;
+    DATA.people.splice(k, 1);
+    for (var i = 0; i < DATA.items.length; i++) {            /* keep assignments honest */
+      DATA.items[i].who = DATA.items[i].who
+        .filter(function (w) { return w !== k; })
+        .map(function (w) { return w > k ? w - 1 : w; });
+    }
+    renderItems();
+  } else if ((a = t.getAttribute('data-who')) !== null) {
+    var it = DATA.items[+t.getAttribute('data-item')], w = +a, at = it.who.indexOf(w);
+    if (at > -1) it.who.splice(at, 1); else it.who.push(w);
+    renderItemRows();
+    renderTotals();
+  } else if ((a = t.getAttribute('data-del')) !== null) {
+    DATA.items.splice(+a, 1);
+    renderItemRows();
+    renderTotals();
+  } else if (t.id === 'add-item') {
+    DATA.items.push({ name: '', price: 0, who: [] });
+    renderItemRows();
+    renderTotals();
+    var boxes = $('itemlist').querySelectorAll('input[data-name]');
+    if (boxes.length) boxes[boxes.length - 1].focus();
+  } else if (t.id === 'all-item') {
+    var everyone = [];
+    for (var q = 0; q < DATA.people.length; q++) everyone.push(q);
+    for (var m = 0; m < DATA.items.length; m++) {
+      if (!DATA.items[m].who.length) DATA.items[m].who = everyone.slice();
+    }
+    renderItemRows();
+    renderTotals();
+  }
+});
+
+$('items').addEventListener('input', function (e) {
+  var el = e.target, a;
+  if ((a = el.getAttribute('data-i')) !== null) {
+    DATA.people[+a] = el.value;
+    renderItemRows();                     /* the chips carry the name too */
+    renderTotals();
+  } else if ((a = el.getAttribute('data-name')) !== null) {
+    DATA.items[+a].name = el.value;
+  } else if ((a = el.getAttribute('data-price')) !== null) {
+    DATA.items[+a].price = Math.max(0, Number(el.value) || 0);
+    renderTotals();
+  } else if (el.id === 'i-tax' || el.id === 'i-tip') {
+    renderTotals();
+  }
+});
+
+renderSimple();
+renderItems();
+
+/* Self-check for the money split: open with ?selftest and read the console. */
+if (location.search.indexOf('selftest') > -1) {
+  var checks = [
+    ['even 3 ways', allocate(1000, [1, 1, 1]), 1000],
+    ['uneven',      allocate(712, [2400, 1950, 3800]), 712],
+    ['no weights',  allocate(101, [0, 0, 0]), 101],
+    ['zero total',  allocate(0, [5, 5]), 0]
+  ], c, sum;
+  for (var z = 0; z < checks.length; z++) {
+    c = checks[z];
+    sum = c[1].reduce(function (a, b) { return a + b; }, 0);
+    console.log((sum === c[2] ? 'ok   ' : 'FAIL ') + c[0] + ' -> [' + c[1].join(',') +
+                '] sums to ' + sum + ' (want ' + c[2] + ')');
+  }
+}
+</script>
+</body>
+</html>

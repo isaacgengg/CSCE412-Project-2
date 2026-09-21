@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IG — Recipe Scaler</title>
+<style>
+:root{
+  --ink:#16181d; --ink-2:#3b4150; --muted:#787f8e;
+  --line:#dde0e7; --paper:#f3f4f7; --card:#fff;
+  --accent:#b4245f; --accent-soft:#fdeef4;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+
+/* --- shared IG chrome --- */
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;height:56px;padding:0 20px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:680;letter-spacing:.01em}
+.brand svg{display:block;fill:var(--accent)}
+.pg{font-size:13px;color:var(--muted)}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 20px 56px}
+footer{border-top:1px solid var(--line);background:var(--card);padding:18px 20px;
+  display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+footer b{color:var(--ink-2);font-weight:600}
+
+/* --- recipe picker --- */
+.picker{display:flex;gap:2px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:26px}
+.picker button{appearance:none;background:none;border:0;border-bottom:2px solid transparent;
+  padding:9px 12px;margin-bottom:-1px;font:inherit;font-size:14px;color:var(--muted);cursor:pointer}
+.picker button:hover{color:var(--ink)}
+.picker button[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+
+/* --- head + servings control --- */
+.top{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:32px;align-items:start;
+  padding-bottom:24px;border-bottom:1px solid var(--line)}
+h1{margin:0 0 8px;font-size:30px;line-height:1.12;letter-spacing:-.025em;font-weight:680}
+.blurb{margin:0 0 12px;max-width:46ch;color:var(--ink-2)}
+.meta{font-size:12.5px;color:var(--muted)}
+.meta span+span::before{content:"·";margin:0 7px;color:var(--line)}
+
+.dial{border:1px solid var(--line);background:var(--card);padding:16px}
+.dial .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--muted)}
+.dial .big{font-size:40px;line-height:1;font-weight:660;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;margin:2px 0 14px}
+.dial .big small{font-size:14px;font-weight:450;color:var(--muted);letter-spacing:0;margin-left:6px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:none;
+  margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--line)}
+input[type=range]::-moz-range-track{height:3px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7.5px;
+  border-radius:50%;background:var(--accent);border:3px solid var(--card);
+  box-shadow:0 0 0 1px var(--accent)}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--accent);
+  border:3px solid var(--card);box-shadow:0 0 0 1px var(--accent)}
+input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
+  font-variant-numeric:tabular-nums;margin-top:-2px}
+.mult{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-2)}
+.mult b{color:var(--accent);font-variant-numeric:tabular-nums}
+
+/* --- columns --- */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:40px;margin-top:28px}
+.cols>div,.top>div{min-width:0}
+h2{margin:0 0 2px;font-size:12.5px;font-weight:650;letter-spacing:.01em;
+  padding-bottom:9px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+h2 em{font-style:normal;font-weight:450;color:var(--muted)}
+
+ul,ol{list-style:none;margin:0;padding:0}
+li{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+li:last-child{border-bottom:0}
+input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:16px;height:16px;
+  margin:2px 0 0;border:1px solid #c3c8d2;border-radius:3px;background:var(--card);cursor:pointer}
+input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+input[type=checkbox]:checked::after{content:"";display:block;width:4px;height:8px;margin:1px 0 0 5px;
+  border:solid var(--card);border-width:0 2px 2px 0;transform:rotate(40deg)}
+input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+li label{cursor:pointer;flex:1}
+li.done label{color:var(--muted);text-decoration:line-through;text-decoration-color:#c3c8d2}
+
+.qty{display:inline-block;min-width:4.9em;padding-right:11px;font-weight:620;
+  font-variant-numeric:tabular-nums}
+.qty i{font-style:normal;font-weight:450;color:var(--muted)}
+.hint{color:var(--muted);font-size:13px}
+
+ol li{counter-increment:step}
+ol .num{flex:none;width:20px;font-size:12.5px;color:var(--accent);font-weight:640;
+  font-variant-numeric:tabular-nums;margin-top:2px}
+ol li.done .num{color:var(--muted)}
+
+.tools{display:flex;gap:8px;margin-top:20px}
+.tools button{appearance:none;font:inherit;font-size:13px;padding:7px 13px;background:var(--card);
+  color:var(--ink-2);border:1px solid var(--line);cursor:pointer}
+.tools button:hover{border-color:#bcc2ce;color:var(--ink)}
+
+@media(max-width:860px){
+  .top{grid-template-columns:minmax(0,1fr);gap:22px}
+  .cols{grid-template-columns:minmax(0,1fr);gap:30px}
+  h1{font-size:25px}
+}
+@media(max-width:480px){
+  .bar{padding:0 14px}.wrap{padding:18px 14px 44px}
+  .picker{gap:0;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .picker button{white-space:nowrap;padding:9px 10px}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="brand">
+    <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
+      <rect x="2" y="2" width="7" height="7" rx="1.2"/><rect x="15" y="2" width="7" height="7" rx="1.2"/>
+      <rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/>
+      <rect x="2" y="15" width="7" height="7" rx="1.2"/><rect x="15" y="15" width="7" height="7" rx="1.2"/>
+    </svg>
+    IG
+  </span>
+  <span class="pg">Recipe Scaler</span>
+</header>
+
+<main class="wrap">
+  <nav class="picker" id="picker" role="tablist" aria-label="Recipes"></nav>
+
+  <section class="top">
+    <div>
+      <h1 id="title"></h1>
+      <p class="blurb" id="blurb"></p>
+      <div class="meta" id="meta"></div>
+    </div>
+
+    <div class="dial">
+      <div class="lab"><span>Servings</span><span id="baseNote"></span></div>
+      <div class="big"><span id="servings">4</span><small id="servUnit">servings</small></div>
+      <input type="range" id="slider" min="1" max="16" step="1" value="4" aria-label="Number of servings">
+      <div class="ticks"><span>1</span><span>8</span><span>16</span></div>
+      <div class="mult" id="mult"></div>
+    </div>
+  </section>
+
+  <div class="cols">
+    <div>
+      <h2>Ingredients <em id="ingCount"></em></h2>
+      <ul id="ings"></ul>
+      <div class="tools"><button type="button" id="clear">Clear all ticks</button></div>
+    </div>
+    <div>
+      <h2>Method <em id="stepCount"></em></h2>
+      <ol id="steps"></ol>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <span><b>IG Recipe Scaler</b> &mdash; service 1 of 5</span>
+  <span>port 8091</span>
+</footer>
+
+<script>
+/* ------------------------------------------------------------------ data
+   Everything the page needs lives here. qty is per `serves` portions.
+   whole:1  -> count ingredient, always a round number (eggs, cloves)
+   metric:1 -> round to a sensible gram/ml figure instead of a fraction     */
+var RECIPES = [
+{
+  id:'pancakes', name:'Buttermilk Pancakes', serves:4, unit:'servings',
+  blurb:'Thick, sour-tangy pancakes. The batter wants ten minutes of sitting still before it meets the pan.',
+  meta:['20 min','Makes 3 per serving','Griddle or heavy frying pan'],
+  ings:[
+    {q:250, u:'g',    n:'plain flour', metric:1},
+    {q:2,   u:'tbsp', n:'caster sugar'},
+    {q:2,   u:'tsp',  n:'baking powder'},
+    {q:0.5, u:'tsp',  n:'bicarbonate of soda'},
+    {q:0.5, u:'tsp',  n:'fine salt'},
+    {q:400, u:'ml',   n:'buttermilk', metric:1},
+    {q:2,   u:'',     n:'eggs', whole:1},
+    {q:50,  u:'g',    n:'butter, melted and cooled', metric:1},
+    {q:1,   u:'tbsp', n:'neutral oil, for the pan'}
+  ],
+  steps:[
+    'Whisk the flour, sugar, baking powder, bicarb and salt together in a wide bowl.',
+    'Beat the buttermilk and eggs in a jug, then pour in the melted butter.',
+    'Tip the wet into the dry and fold just until no dry flour remains. Lumps are correct; a smooth batter means tough pancakes.',
+    'Rest the batter 10 minutes while the pan heats on medium with a film of oil.',
+    'Drop batter in rounds. Cook until the bubbles at the edges stop closing over, about 2 minutes, then flip and give it 90 seconds more.'
+  ]
+},
+{
+  id:'traybake', name:'Chicken &amp; Chickpea Traybake', serves:4, unit:'servings',
+  blurb:'One tin, forty minutes, and a pan of sticky lemon juices you will want bread for.',
+  meta:['45 min','One roasting tin','Oven 200°C fan'],
+  ings:[
+    {q:8,   u:'',     n:'chicken thighs, bone in', whole:1},
+    {q:400, u:'g',    n:'tinned chickpeas, drained', metric:1},
+    {q:2,   u:'',     n:'red onions, cut in wedges', whole:1},
+    {q:1,   u:'',     n:'lemon, in thin slices', whole:1},
+    {q:4,   u:'',     n:'garlic cloves, bruised', whole:1},
+    {q:3,   u:'tbsp', n:'olive oil'},
+    {q:2,   u:'tsp',  n:'smoked paprika'},
+    {q:1,   u:'tsp',  n:'ground cumin'},
+    {q:0.75,u:'tsp',  n:'flaky salt'},
+    {q:2,   u:'tbsp', n:'parsley, roughly chopped'}
+  ],
+  steps:[
+    'Heat the oven to 200°C fan. Toss the chickpeas, onion, lemon and garlic with two thirds of the oil and all the spices in the tin.',
+    'Rub the chicken with the rest of the oil and the salt, then set it skin up on top so the fat bastes everything below.',
+    'Roast 35 to 40 minutes, until the skin has gone dark at the edges and the chickpeas have crisped.',
+    'Rest 5 minutes off the heat, scatter the parsley, and spoon the tin juices back over everything.'
+  ]
+},
+{
+  id:'brownies', name:'Dark Chocolate Brownies', serves:12, unit:'squares',
+  blurb:'Fudged rather than cakey. Pull them while the middle still looks slightly underdone.',
+  meta:['35 min plus cooling','20cm square tin','Oven 170°C fan'],
+  ings:[
+    {q:200, u:'g',    n:'dark chocolate, 70%', metric:1},
+    {q:175, u:'g',    n:'unsalted butter', metric:1},
+    {q:250, u:'g',    n:'light brown sugar', metric:1},
+    {q:3,   u:'',     n:'eggs', whole:1},
+    {q:1,   u:'tsp',  n:'vanilla extract'},
+    {q:90,  u:'g',    n:'plain flour', metric:1},
+    {q:30,  u:'g',    n:'cocoa powder', metric:1},
+    {q:0.5, u:'tsp',  n:'fine salt'},
+    {q:75,  u:'g',    n:'walnuts, broken (optional)', metric:1}
+  ],
+  steps:[
+    'Line the tin and heat the oven to 170°C fan. Melt the chocolate and butter together, then let the mixture cool to barely warm.',
+    'Whisk in the sugar, then the eggs one at a time, then the vanilla. Keep whisking a full minute once the eggs are in &mdash; that is where the papery top comes from.',
+    'Sift the flour, cocoa and salt over the top and fold until just combined. Fold in the walnuts if using.',
+    'Bake 22 to 25 minutes. The edges should be set and the centre should still wobble faintly.',
+    'Cool completely in the tin before cutting, however unreasonable that sounds.'
+  ]
+},
+{
+  id:'soup', name:'Tomato &amp; Red Lentil Soup', serves:6, unit:'bowls',
+  blurb:'Cheap, thick, and better on the second day. Blend it or leave it rough.',
+  meta:['40 min','Large saucepan','Freezes well'],
+  ings:[
+    {q:2,   u:'tbsp', n:'olive oil'},
+    {q:1,   u:'',     n:'large onion, diced', whole:1},
+    {q:2,   u:'',     n:'carrots, diced', whole:1},
+    {q:3,   u:'',     n:'garlic cloves, sliced', whole:1},
+    {q:2,   u:'tbsp', n:'tomato purée'},
+    {q:1,   u:'tsp',  n:'ground coriander'},
+    {q:0.25,u:'tsp',  n:'chilli flakes'},
+    {q:250, u:'g',    n:'red lentils, rinsed', metric:1},
+    {q:800, u:'g',    n:'tinned plum tomatoes', metric:1},
+    {q:1200,u:'ml',   n:'vegetable stock', metric:1},
+    {q:1,   u:'tbsp', n:'red wine vinegar'}
+  ],
+  steps:[
+    'Soften the onion and carrot in the oil over medium heat for 10 minutes without colouring them.',
+    'Add the garlic, purée, coriander and chilli and fry another 2 minutes, until the purée darkens.',
+    'Tip in the lentils, tomatoes and stock. Crush the tomatoes against the side of the pan.',
+    'Simmer 25 minutes, stirring now and then so the lentils do not catch on the base.',
+    'Finish with the vinegar and taste for salt. Blend smooth if you want it elegant.'
+  ]
+},
+{
+  id:'risotto', name:'Mushroom &amp; Garlic Risotto', serves:4, unit:'servings',
+  blurb:'Stir it, but not devotedly. Keep the stock hot and the pan at a lazy simmer.',
+  meta:['40 min','Wide shallow pan','Keep stock simmering'],
+  ings:[
+    {q:1200,u:'ml',   n:'chicken or vegetable stock, hot', metric:1},
+    {q:400, u:'g',    n:'chestnut mushrooms, thickly sliced', metric:1},
+    {q:60,  u:'g',    n:'butter', metric:1},
+    {q:1,   u:'tbsp', n:'olive oil'},
+    {q:1,   u:'',     n:'onion, finely diced', whole:1},
+    {q:3,   u:'',     n:'garlic cloves, minced', whole:1},
+    {q:320, u:'g',    n:'carnaroli or arborio rice', metric:1},
+    {q:150, u:'ml',   n:'dry white wine', metric:1},
+    {q:60,  u:'g',    n:'parmesan, grated', metric:1},
+    {q:1,   u:'tbsp', n:'thyme leaves'}
+  ],
+  steps:[
+    'Fry the mushrooms hard in half the butter and the oil, in batches, until properly browned. Set them aside with the thyme.',
+    'Lower the heat, add the onion to the same pan and cook 8 minutes until translucent, then the garlic for one more.',
+    'Stir in the rice and toast it 2 minutes until the grains look glassy at the edges. Pour in the wine and let it disappear.',
+    'Add hot stock a ladle at a time, stirring occasionally, waiting for each to be nearly absorbed. About 18 minutes.',
+    'When the rice is tender with a faint bite, beat in the rest of the butter, the parmesan and the mushrooms off the heat. Rest 2 minutes before serving.'
+  ]
+}
+];
+
+/* -------------------------------------------------------------- fractions
+   Cooks read 1 1/8, not 1.125. Snap the fractional part to the nearest
+   kitchen-sized denominator and only fall back to a decimal if nothing fits. */
+function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+
+function frac(x) {
+  if (x <= 0) return '0';
+  if (x < 1 / 16) return '1/8';                       /* scaled-down spices */
+  var whole = Math.floor(x + 1e-9), r = x - whole;
+  if (r < 1 / 32) return String(whole);
+  var dens = [2, 3, 4, 6, 8], best = null, i, d, n, err;
+  for (i = 0; i < dens.length; i++) {
+    d = dens[i];
+    n = Math.round(r * d);
+    if (n === 0 || n === d) continue;
+    err = Math.abs(r - n / d);
+    if (!best || err < best.err - 1e-12) best = { n: n, d: d, err: err };
+  }
+  if (!best) return String(whole + 1);                /* r rounded up to 1 everywhere */
+  if (best.err > 1 / 16) {
+    return String(Math.round(x * 100) / 100);         /* nothing close enough */
+  }
+  var g = gcd(best.n, best.d);
+  return (whole ? whole + ' ' : '') + (best.n / g) + '/' + (best.d / g);
+}
+
+/* Metric amounts get rounded to something a scale can actually show. */
+function metric(x) {
+  if (x >= 400) return String(Math.round(x / 25) * 25);
+  if (x >= 50) return String(Math.round(x / 5) * 5);
+  if (x >= 10) return String(Math.round(x));
+  return String(Math.round(x * 10) / 10);
+}
+
+function amount(ing, mult) {
+  var x = ing.q * mult;
+  if (ing.metric) return metric(x);
+  if (ing.whole) return String(Math.max(1, Math.round(x)));
+  return frac(x);
+}
+
+/* ------------------------------------------------------------------- view */
+var cur = RECIPES[0], servings = cur.serves;
+var $ = function (id) { return document.getElementById(id); };
+
+function buildPicker() {
+  var html = '', i;
+  for (i = 0; i < RECIPES.length; i++) {
+    html += '<button type="button" role="tab" data-i="' + i + '" aria-selected="' +
+            (i === 0) + '">' + RECIPES[i].name + '</button>';
+  }
+  $('picker').innerHTML = html;
+  $('picker').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (!b) return;
+    cur = RECIPES[+b.getAttribute('data-i')];
+    servings = cur.serves;
+    $('slider').value = servings;
+    var bs = $('picker').getElementsByTagName('button'), k;
+    for (k = 0; k < bs.length; k++) bs[k].setAttribute('aria-selected', bs[k] === b);
+    renderRecipe();
+  });
+}
+
+/* Full redraw: only happens when the recipe changes, so ticks survive slider moves. */
+function renderRecipe() {
+  $('title').innerHTML = cur.name;
+  $('blurb').innerHTML = cur.blurb;
+  $('meta').innerHTML = '<span>' + cur.meta.join('</span><span>') + '</span>';
+  $('baseNote').textContent = 'written for ' + cur.serves;
+  $('servUnit').textContent = cur.unit;
+  $('ingCount').textContent = cur.ings.length + ' items';
+  $('stepCount').textContent = cur.steps.length + ' steps';
+
+  var html = '', i, id;
+  for (i = 0; i < cur.ings.length; i++) {
+    id = 'i' + i;
+    html += '<li><input type="checkbox" id="' + id + '"><label for="' + id + '">' +
+            '<span class="qty" data-i="' + i + '"></span>' +
+            '<span class="nm">' + cur.ings[i].n + '</span></label></li>';
+  }
+  $('ings').innerHTML = html;
+
+  html = '';
+  for (i = 0; i < cur.steps.length; i++) {
+    id = 's' + i;
+    html += '<li><input type="checkbox" id="' + id + '"><span class="num">' + (i + 1) + '</span>' +
+            '<label for="' + id + '">' + cur.steps[i] + '</label></li>';
+  }
+  $('steps').innerHTML = html;
+
+  renderAmounts();
+}
+
+/* Cheap redraw: the numbers only, called on every slider tick. */
+function renderAmounts() {
+  var mult = servings / cur.serves;
+  $('servings').textContent = servings;
+  $('mult').innerHTML = 'Scaled <b>&times;' + (Math.round(mult * 100) / 100) + '</b> from ' +
+                        cur.serves + ' ' + cur.unit;
+  var cells = $('ings').getElementsByClassName('qty'), i, ing, a;
+  for (i = 0; i < cells.length; i++) {
+    ing = cur.ings[+cells[i].getAttribute('data-i')];
+    a = amount(ing, mult);
+    cells[i].innerHTML = a + (ing.u ? ' <i>' + ing.u + '</i>' : '');
+  }
+}
+
+/* One listener for every checkbox on the page, ingredients and steps alike. */
+document.addEventListener('change', function (e) {
+  if (e.target.type === 'checkbox') {
+    var li = e.target.parentNode;
+    if (e.target.checked) { li.className = 'done'; } else { li.className = ''; }
+  }
+});
+
+$('slider').addEventListener('input', function () {
+  servings = +this.value;
+  renderAmounts();
+});
+
+$('clear').addEventListener('click', function () {
+  var b = document.querySelectorAll('input[type=checkbox]'), i;
+  for (i = 0; i < b.length; i++) { b[i].checked = false; b[i].parentNode.className = ''; }
+});
+
+buildPicker();
+renderRecipe();
+
+/* Self-check for the fraction formatter: open with ?selftest and read the console. */
+if (location.search.indexOf('selftest') > -1) {
+  var cases = [[0.75, '3/4'], [1.125, '1 1/8'], [1.5, '1 1/2'], [0.3333, '1/3'],
+               [2, '2'], [0.0625, '1/8'], [0.01, '1/8'], [4.25, '4 1/4'], [0.875, '7/8']];
+  for (var t = 0; t < cases.length; t++) {
+    var got = frac(cases[t][0]);
+    console.log((got === cases[t][1] ? 'ok   ' : 'FAIL ') + cases[t][0] + ' -> ' + got +
+                ' (want ' + cases[t][1] + ')');
+  }
+}
+</script>
+</body>
+</html>
